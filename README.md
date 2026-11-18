@@ -95,9 +95,16 @@ under-reports what the engine could allow.
 ## Repository
 
 - `spec/`: the specification, JSON Schema, example policy and conformance
-  cases. License CC BY 4.0.
-- `sdk/`: the `openapl` Python package (engine and CLI). License
-  Apache 2.0.
+  cases.
+- `sdk/`: the `openapl` Python package (engine and CLI).
+
+## License
+
+The OpenAPL specification text (spec/SPEC.md and spec/CHANGELOG.md) is
+licensed under CC BY 4.0 (spec/LICENSE-SPEC). Code, schemas, scripts,
+example policies and conformance data (sdk/, spec/schemas/, spec/scripts/,
+spec/examples/ and spec/conformance/) are licensed under Apache-2.0
+(spec/LICENSE-CODE).
 
 ## Tests
 

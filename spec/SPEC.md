@@ -11,7 +11,7 @@
 | Policy files | `*.apl.yaml` |
 | Schema | [`schemas/openapl-v0.1.json`](./schemas/openapl-v0.1.json) |
 | Reference engine | `openapl` Python SDK 0.1.0 ([`../sdk`](../sdk)) |
-| License | Specification CC BY 4.0 ([`LICENSE-SPEC`](./LICENSE-SPEC)); code Apache 2.0 ([`LICENSE-CODE`](./LICENSE-CODE)) |
+| License | Specification text CC BY 4.0 ([`LICENSE-SPEC`](./LICENSE-SPEC)); code, schemas, scripts, examples and conformance data Apache-2.0 ([`LICENSE-CODE`](./LICENSE-CODE)) |
 
 OpenAPL is not related to the APL programming language. "APL" here stands
 for **Access Policy Language**.

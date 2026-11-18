@@ -1,7 +1,12 @@
 Creative Commons Attribution 4.0 International (CC BY 4.0)
 
-This license applies to the OpenGPL Specification text (SPEC.md) and all
-normative documentation in this repository.
+The OpenAPL specification text (spec/SPEC.md and spec/CHANGELOG.md) is
+licensed under CC BY 4.0 (spec/LICENSE-SPEC). Code, schemas, scripts,
+example policies and conformance data (sdk/, spec/schemas/, spec/scripts/,
+spec/examples/ and spec/conformance/) are licensed under Apache-2.0
+(spec/LICENSE-CODE).
+
+This file covers the specification text.
 
 Copyright (c) 2026 OpenAstra
 
@@ -11,8 +16,7 @@ You are free to:
           even commercially
 
 Under the following terms:
-  Attribution — You must give appropriate credit to OpenAstra and the
-  OpenAstra, provide a link to the license, and
-  indicate if changes were made.
+  Attribution — You must give appropriate credit to OpenAstra, provide a
+  link to the license, and indicate if changes were made.
 
 Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
