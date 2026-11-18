@@ -29,3 +29,24 @@ def test_read_log_window_and_malformed(tmp_path):
     recs, skipped = read_log(str(p), since=15, until=30)
     assert [r["timestamp"] for r in recs] == [20, 30]
     assert skipped == 1
+
+
+def test_read_log_invalid_utf8_and_non_dict(tmp_path):
+    p = tmp_path / "d.jsonl"
+    log = DecisionLog(str(p))
+    log.append(_dec(10))
+    with open(p, "ab") as f:
+        f.write(b"\xff\xfe bad\n[1]\n")
+    log.append(_dec(20))
+    recs, skipped = read_log(str(p))
+    assert [r["timestamp"] for r in recs] == [10, 20]
+    assert skipped == 2
+
+
+def test_read_log_boundaries_inclusive(tmp_path):
+    p = str(tmp_path / "d.jsonl")
+    log = DecisionLog(p)
+    for ts in (10, 20, 30):
+        log.append(_dec(ts))
+    recs, _ = read_log(p, since=20, until=20)
+    assert [r["timestamp"] for r in recs] == [20]

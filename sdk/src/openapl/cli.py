@@ -1,6 +1,7 @@
 # sdk/src/openapl/cli.py
 """The openapl command line."""
 import json
+import re
 import time
 from pathlib import Path
 
@@ -36,12 +37,15 @@ def validate(policy_dir: str, directory: str | None) -> None:
     click.echo(f"✓ {len(ps.principals)} principals, {grants} entitlements, {denies} denies from {files} files")
 
 
+_INT_RE = re.compile(r"-?[0-9]+")
+_FLOAT_RE = re.compile(r"-?[0-9]+\.[0-9]+")
+
+
 def _parse_value(text: str):
-    for conv in (int, float):
-        try:
-            return conv(text)
-        except ValueError:
-            pass
+    if _INT_RE.fullmatch(text):
+        return int(text)
+    if _FLOAT_RE.fullmatch(text):
+        return float(text)
     return text
 
 

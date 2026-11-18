@@ -22,16 +22,18 @@ def read_log(path: str, since: int | None = None,
     """Return records with since <= timestamp <= until, and the malformed-line count."""
     records: list[dict] = []
     skipped = 0
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            if not line.strip():
+    with open(path, "rb") as f:
+        for raw in f:
+            if not raw.strip():
                 continue
             try:
-                rec = json.loads(line)
+                rec = json.loads(raw.decode("utf-8"))
+                if not isinstance(rec, dict):
+                    raise ValueError("not an object")
                 ts = rec["timestamp"]
-                if not isinstance(rec, dict) or isinstance(ts, bool) or not isinstance(ts, int):
-                    raise ValueError("bad record")
-            except (ValueError, KeyError, TypeError):
+                if isinstance(ts, bool) or not isinstance(ts, int):
+                    raise ValueError("bad timestamp")
+            except (ValueError, KeyError):
                 skipped += 1
                 continue
             if since is not None and ts < since:

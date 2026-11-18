@@ -66,3 +66,37 @@ def test_cli_decide_unwritable_log_exit_1(refund_dir, tmp_path):
     assert r.exit_code == 1
     assert "DECISION: ALLOW" in r.output
     assert "cannot write decision log" in r.output
+
+
+import pytest
+
+from openapl.cli import _parse_value
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("150", 150), ("-3", -3), ("2.5", 2.5),
+    ("nan", "nan"), ("inf", "inf"), ("-inf", "-inf"), ("infinity", "infinity"),
+    ("1_000", "1_000"), ("+5", "+5"), (" 12 ", " 12 "), ("123abc", "123abc"),
+    ("١٢٣", "١٢٣"), ("1e3", "1e3"),
+])
+def test_parse_value_strict(text, expected):
+    got = _parse_value(text)
+    assert got == expected and type(got) is type(expected)
+
+
+def test_cli_decide_bad_approval_exit_1(refund_dir):
+    assert _decide(refund_dir, 150, "--approval", "{nope").exit_code == 1
+    assert _decide(refund_dir, 150, "--approval", '{"exp": 1}').exit_code == 1
+
+
+def test_cli_decide_bad_origin_claims_exit_1(refund_dir):
+    args = [a if not a.startswith('{"groups') else "{bad" for a in ALLOW_ARGS]
+    r = CliRunner().invoke(main, ["decide", str(refund_dir), *args, "--attr", "amount=1"])
+    assert r.exit_code == 1
+
+
+def test_cli_decide_deny_exit_3(refund_dir):
+    args = [a if a != "account_status=open" else "account_status=closed" for a in ALLOW_ARGS]
+    r = CliRunner().invoke(main, ["decide", str(refund_dir), *args, "--attr", "amount=150"])
+    assert r.exit_code == 3, r.output
+    assert "DECISION: DENY" in r.output
