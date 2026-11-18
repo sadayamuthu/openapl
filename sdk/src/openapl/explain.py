@@ -33,6 +33,23 @@ def _covers(edge_actions: tuple[str, ...], grant_action: str) -> bool:
     return any(actions_overlap(a, grant_action) for a in edge_actions)
 
 
+_HUMAN_PREFIXES = ("user:", "group:", "role:")
+_GROUPISH = ("group:", "role:")
+
+
+def _acts_for_may_apply(who: str | None, on_behalf_of: str) -> bool:
+    """Could an acts_for entry for `who` cover a human described by `on_behalf_of`?"""
+    if who is None:
+        return False
+    if who == on_behalf_of:
+        return True
+    if on_behalf_of.startswith("user:"):
+        return who.startswith(_GROUPISH)  # the user may hold any group or role
+    if on_behalf_of.startswith(_GROUPISH):
+        return who.startswith("user:")  # any user may hold that group or role
+    return False
+
+
 def explain(ps: PolicySet, principal_id: str, on_behalf_of: str | None = None) -> Explanation:
     """Reach if hijacked. Conservative: may over-report, never under-reports.
 
@@ -51,10 +68,14 @@ def explain(ps: PolicySet, principal_id: str, on_behalf_of: str | None = None) -
     sel_actions: tuple[str, ...] = ()
     if on_behalf_of is not None:
         depth -= 1  # the acts_for hop counts toward max_depth
-        acts_actions = tuple(a for entry in principal.acts_for if entry.who == on_behalf_of
+        # explain cannot know a human's memberships, so any acts_for entry or
+        # human-selector grant that could also apply to that human counts.
+        acts_actions = tuple(a for entry in principal.acts_for
+                             if _acts_for_may_apply(entry.who, on_behalf_of)
                              for a in entry.actions)
         sel_actions = tuple(e.action for e in ps.entitlements
-                            if not e.deny and on_behalf_of in e.grant_to)
+                            if not e.deny and any(s == "*" or s.startswith(_HUMAN_PREFIXES)
+                                                  for s in e.grant_to))
 
     reach: list[Reach] = []
 

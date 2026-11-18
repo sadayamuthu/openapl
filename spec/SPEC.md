@@ -804,8 +804,15 @@ NEVER under-report what the engine could allow. Concretely:
 - Plain `explain` allows `max_depth` agent hops.
 - With `--on-behalf-of`, the `acts_for` hop counts toward `max_depth`
   (leaving `max_depth − 1` agent hops), and a reported grant must overlap
-  both the actions of the principal's `acts_for` entry for that selector
-  and some action granted to the selector itself.
+  both some action of an `acts_for` entry that could apply to that human
+  and some action that could be granted to that human. `explain` does not
+  know a human's group or role memberships, so:
+  - an `acts_for` entry could apply if its `who` is the selector itself;
+    for a `user:` selector, also any `group:` or `role:` entry; for a
+    `group:` or `role:` selector, also any `user:` entry;
+  - an action could be granted to the human if any grant whose
+    `grant_to` contains `*` or any `user:`, `group:` or `role:` selector
+    carries it.
 - Conditions, purposes, expiry and denies are not evaluated, so reach
   shows what could be allowed, not what will be.
 - Reach counts only grants, never denies.

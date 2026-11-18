@@ -127,3 +127,33 @@ def test_on_behalf_of_requires_exact_who(tmp_path):
     agents = {"a": ([], [("group:g", ["*"])])}
     ps = _ps(tmp_path, agents, [("a", "x.y"), ("group:h", "*")])
     assert explain(ps, "a", on_behalf_of="group:h").reach == ()
+
+
+def _engine(ps, origin_claims, action="x.y"):
+    from openapl.authorizer import Authorizer
+    from openapl.model import Link, Request
+    chain = (Link("user:alice", "human", origin_claims), Link("a", "agent", {}))
+    return Authorizer(ps).decide(Request(chain, action, "r/1", now=1000)).decision
+
+
+def test_on_behalf_of_human_granted_by_star(tmp_path):
+    # Case A: the human's grant comes from grant_to ["*"].
+    ps = _ps(tmp_path, {"a": ([], [("group:staff", ["*"])])}, [("'*'", "x.y")])
+    assert _engine(ps, {"groups": ["staff"]}) == "ALLOW"
+    for sel in ("group:staff", "user:alice"):
+        assert [r.entitlement_id for r in explain(ps, "a", on_behalf_of=sel).reach] == ["g0"], sel
+
+
+def test_on_behalf_of_human_granted_by_other_membership(tmp_path):
+    # Case B: the human's grant comes from role:reader; the acts_for edge from group:staff.
+    ps = _ps(tmp_path, {"a": ([], [("group:staff", ["*"])])}, [("role:reader", "x.y"), ("a", "x.y")])
+    assert _engine(ps, {"groups": ["staff"], "roles": ["reader"]}) == "ALLOW"
+    assert [r.entitlement_id for r in explain(ps, "a", on_behalf_of="group:staff").reach] == ["g1"]
+    assert [r.entitlement_id for r in explain(ps, "a", on_behalf_of="user:alice").reach] == ["g1"]
+
+
+def test_on_behalf_of_user_ignores_other_users_acts_for(tmp_path):
+    ps = _ps(tmp_path, {"a": ([], [("user:bob", ["*"])])}, [("'*'", "x.y")])
+    assert explain(ps, "a", on_behalf_of="user:alice").reach == ()
+    assert [r.entitlement_id for r in explain(ps, "a", on_behalf_of="user:bob").reach] == ["g0"]
+    assert [r.entitlement_id for r in explain(ps, "a", on_behalf_of="group:g").reach] == ["g0"]
