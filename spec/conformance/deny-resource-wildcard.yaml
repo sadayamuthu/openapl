@@ -1,0 +1,60 @@
+# spec/conformance/deny-resource-wildcard.yaml
+# R7: a deny's resource treats every ${...} as *, so attributes cannot narrow or skip it.
+openapl_conformance: '0.1'
+suite: deny-resource-wildcard
+policies:
+  - inline: |
+      openapl: '0.1'
+      policy: p
+      version: 1.0.0
+      principals:
+        bot:
+          kind: agent
+          identity: { oauth_client_id: bot }
+          owner: priya@acme.com
+          acts_for:
+            - who: "user:h@acme.com"
+              actions: [a.read]
+      entitlements:
+        - id: everyone-reads
+          grant_to: ["*"]
+          action: a.read
+          resource: "doc/*"
+      deny:
+        - id: no-secret-docs
+          grant_to: ["*"]
+          action: a.read
+          resource: "doc/${request.doc_id}"
+          when: ["request.secret == true"]
+defaults:
+  request:
+    chain:
+      - { id: "user:h@acme.com", kind: human }
+      - { id: bot, kind: agent }
+    action: a.read
+    resource: doc/1
+    now: 1000
+cases:
+  - id: matching-attribute
+    request: { attributes: { doc_id: "1", secret: true } }
+    expect:
+      decision: DENY
+      reasons_include: ["denied by no-secret-docs"]
+  - id: missing-attribute-cannot-skip-deny
+    request: { attributes: { secret: true } }
+    expect:
+      decision: DENY
+      reasons_include: ["denied by no-secret-docs"]
+  - id: mismatched-attribute-cannot-skip-deny
+    request: { attributes: { doc_id: "2", secret: true } }
+    expect:
+      decision: DENY
+      reasons_include: ["denied by no-secret-docs"]
+  - id: no-attributes-condition-error
+    request: { attributes: {} }
+    expect:
+      decision: DENY
+      reasons_include: ["denied by no-secret-docs (condition error)"]
+  - id: not-secret-allows
+    request: { attributes: { secret: false } }
+    expect: { decision: ALLOW }

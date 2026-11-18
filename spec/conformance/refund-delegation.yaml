@@ -1,0 +1,300 @@
+# spec/conformance/refund-delegation.yaml
+# Conformance cases against the example policy (format: SPEC.md §10).
+openapl_conformance: '0.1'
+suite: refund-delegation
+policies:
+  - file: ../examples/refund-delegation.apl.yaml
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+      - { id: support-agent, kind: agent }
+      - { id: refund-agent, kind: agent }
+    action: payments.refund
+    resource: order/123
+    attributes: { order_id: "123", amount: 150, account_status: open }
+    purpose: customer-refund
+    task_id: t1
+    now: 1000
+cases:
+  - id: allow-full-chain
+    description: Support staff -> support-agent -> refund-agent, small refund.
+    expect:
+      decision: ALLOW
+      reasons: []
+      matched: [support-staff-refunds, refund-small-orders]
+
+  - id: acts-for-required
+    description: The origin is not in group:support-staff, so no human -> agent edge exists.
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [] } }
+        - { id: support-agent, kind: agent }
+        - { id: refund-agent, kind: agent }
+    expect:
+      decision: DENY
+      reasons_include: ["no delegation edge user:alice@acme.com -> support-agent for payments.refund"]
+
+  - id: missing-edge-direct
+    description: refund-agent has no acts_for; the shorter chain lacks an edge (P1 counterexample, first half).
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+        - { id: refund-agent, kind: agent }
+    expect:
+      decision: DENY
+      reasons_include: ["no delegation edge user:alice@acme.com -> refund-agent for payments.refund"]
+
+  - id: edge-action-must-match
+    description: Every edge must name the action.
+    request: { action: payments.void }
+    expect:
+      decision: DENY
+      reasons_include:
+        - "no delegation edge user:alice@acme.com -> support-agent for payments.void"
+        - "no delegation edge support-agent -> refund-agent for payments.void"
+
+  - id: over-limit-requires-approval
+    description: The caller's entitlement fails its when and has an otherwise.
+    request:
+      attributes: { order_id: "123", amount: 350, account_status: open }
+    expect:
+      decision: REQUIRE_APPROVAL
+      approvers: ["role:support-manager"]
+      reasons: ["refund-agent needs approval for refund-small-orders"]
+      matched: [support-staff-refunds, refund-small-orders]
+
+  - id: bound-approval-allows
+    description: An approval item bound to every field of this request satisfies the otherwise.
+    request:
+      attributes: { order_id: "123", amount: 350, account_status: open }
+      approvals:
+        - entitlement_id: refund-small-orders
+          approver: "role:support-manager"
+          action: payments.refund
+          resource: order/123
+          attributes_hash: 4a606d0f23427518a1955becd0631fcd27add350802d8edc21933ac60e263415
+          origin: "user:alice@acme.com"
+          caller: refund-agent
+          exp: 2000
+    expect:
+      decision: ALLOW
+      reasons: []
+
+  - id: approval-exp-equal-now-allows
+    description: exp is inclusive (exp >= now).
+    request:
+      attributes: { order_id: "123", amount: 350, account_status: open }
+      approvals:
+        - entitlement_id: refund-small-orders
+          approver: "role:support-manager"
+          action: payments.refund
+          resource: order/123
+          attributes_hash: 4a606d0f23427518a1955becd0631fcd27add350802d8edc21933ac60e263415
+          origin: "user:alice@acme.com"
+          caller: refund-agent
+          exp: 1000
+    expect:
+      decision: ALLOW
+
+  - id: approval-expired
+    request:
+      attributes: { order_id: "123", amount: 350, account_status: open }
+      approvals:
+        - entitlement_id: refund-small-orders
+          approver: "role:support-manager"
+          action: payments.refund
+          resource: order/123
+          attributes_hash: 4a606d0f23427518a1955becd0631fcd27add350802d8edc21933ac60e263415
+          origin: "user:alice@acme.com"
+          caller: refund-agent
+          exp: 999
+    expect:
+      decision: REQUIRE_APPROVAL
+      approvers: ["role:support-manager"]
+
+  - id: approval-replayed-for-other-amount
+    description: An approval for $300 replayed for $50,000 does not match the attribute hash.
+    request:
+      attributes: { order_id: "123", amount: 50000, account_status: open }
+      approvals:
+        - entitlement_id: refund-small-orders
+          approver: "role:support-manager"
+          action: payments.refund
+          resource: order/123
+          attributes_hash: 7756086ad841165afc3bdb5059da335697a9580744f7f6ccba61246a21643d7e
+          origin: "user:alice@acme.com"
+          caller: refund-agent
+          exp: 2000
+    expect:
+      decision: REQUIRE_APPROVAL
+
+  - id: approval-replayed-for-other-resource
+    request:
+      attributes: { order_id: "123", amount: 350, account_status: open }
+      approvals:
+        - entitlement_id: refund-small-orders
+          approver: "role:support-manager"
+          action: payments.refund
+          resource: order/999
+          attributes_hash: 4a606d0f23427518a1955becd0631fcd27add350802d8edc21933ac60e263415
+          origin: "user:alice@acme.com"
+          caller: refund-agent
+          exp: 2000
+    expect:
+      decision: REQUIRE_APPROVAL
+
+  - id: approval-for-other-caller
+    request:
+      attributes: { order_id: "123", amount: 350, account_status: open }
+      approvals:
+        - entitlement_id: refund-small-orders
+          approver: "role:support-manager"
+          action: payments.refund
+          resource: order/123
+          attributes_hash: 4a606d0f23427518a1955becd0631fcd27add350802d8edc21933ac60e263415
+          origin: "user:alice@acme.com"
+          caller: support-agent
+          exp: 2000
+    expect:
+      decision: REQUIRE_APPROVAL
+
+  - id: deny-beats-approval
+    description: A bulk order needs approval on the caller but a deny matches; DENY wins and lists no approvers.
+    request:
+      resource: order/bulk-1
+      attributes: { order_id: bulk-1, amount: 350, account_status: open }
+    expect:
+      decision: DENY
+      approvers: []
+      reasons_include: ["denied by no-bulk-refunds"]
+
+  - id: deny-closed-account
+    request:
+      attributes: { order_id: "123", amount: 150, account_status: closed }
+    expect:
+      decision: DENY
+      reasons_include: ["denied by no-refunds-on-closed-accounts"]
+
+  - id: deny-condition-missing-attribute-fails-closed
+    description: The deny's when references an absent attribute; the deny fires.
+    request:
+      attributes: { order_id: "123", amount: 150 }
+    expect:
+      decision: DENY
+      reasons_include: ["denied by no-refunds-on-closed-accounts (condition error)"]
+
+  - id: grant-condition-missing-attribute-no-grant
+    description: The grant's when references an absent attribute; the entitlement does not grant and its otherwise does not apply.
+    request:
+      attributes: { order_id: "123", account_status: open }
+    expect:
+      decision: DENY
+      reasons_include:
+        - "refund-agent has no grant for payments.refund on order/123"
+        - "condition error in refund-small-orders"
+
+  - id: purpose-mismatch
+    request: { purpose: marketing }
+    expect:
+      decision: DENY
+      reasons_include: ["refund-agent has no grant for payments.refund on order/123"]
+
+  - id: purpose-absent
+    request: { purpose: null }
+    expect:
+      decision: DENY
+      reasons_include: ["refund-agent has no grant for payments.refund on order/123"]
+
+  - id: task-expiry-needs-task-id
+    request: { task_id: null }
+    expect:
+      decision: DENY
+      reasons_include: ["refund-agent has no grant for payments.refund on order/123"]
+
+  - id: agent-origin-rejected
+    request:
+      chain:
+        - { id: support-agent, kind: agent }
+        - { id: refund-agent, kind: agent }
+    expect:
+      decision: DENY
+      reasons_include: ["human origin required"]
+
+  - id: depth-limit
+    description: Four agent hops exceed max_depth 3.
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+        - { id: support-agent, kind: agent }
+        - { id: refund-agent, kind: agent }
+        - { id: support-agent, kind: agent }
+        - { id: refund-agent, kind: agent }
+    expect:
+      decision: DENY
+      reasons_include: ["chain depth 4 exceeds 3"]
+
+  - id: human-after-origin
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+        - { id: support-agent, kind: agent }
+        - { id: "user:bob@acme.com", kind: human, claims: { groups: [support-staff] } }
+    expect:
+      decision: DENY
+      reasons_include: ["human in chain after origin"]
+
+  - id: unknown-principal
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+        - { id: support-agent, kind: agent }
+        - { id: ghost, kind: agent }
+    expect:
+      decision: DENY
+      reasons_include: ["unknown principal ghost"]
+
+  - id: empty-chain
+    request: { chain: [] }
+    expect:
+      decision: DENY
+      reasons: ["empty chain"]
+
+  - id: malformed-human-link-as-caller
+    description: R6. A link of kind human whose id lacks user:.
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+        - { id: support-agent, kind: agent }
+        - { id: refund-agent, kind: human }
+    expect:
+      decision: DENY
+      reasons_include: ["malformed human link refund-agent"]
+
+  - id: malformed-human-link-as-origin
+    request:
+      chain:
+        - { id: refund-agent, kind: human, claims: { groups: [support-staff] } }
+        - { id: support-agent, kind: agent }
+        - { id: refund-agent, kind: agent }
+    expect:
+      decision: DENY
+      reasons_include: ["malformed human link refund-agent"]
+
+  - id: malformed-agent-with-user-prefix
+    description: R6. A non-human link whose id starts with user:.
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+        - { id: support-agent, kind: agent }
+        - { id: "user:mallory@acme.com", kind: agent }
+    expect:
+      decision: DENY
+      reasons_include: ["malformed human link user:mallory@acme.com"]
+
+  - id: request-time-not-set
+    description: R8. now must be a positive integer.
+    request: { now: 0 }
+    expect:
+      decision: DENY
+      reasons_include: ["request time not set"]
