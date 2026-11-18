@@ -26,8 +26,11 @@ def actions_overlap(p: str, q: str) -> bool:
         return x[:first.start()], x[last + 1:]
 
     (p_pre, p_suf), (q_pre, q_suf) = parts(p), parts(q)
-    return ((p_pre.startswith(q_pre) or q_pre.startswith(p_pre))
-            and (p_suf.endswith(q_suf) or q_suf.endswith(p_suf)))
+    if not (p_pre.startswith(q_pre) or q_pre.startswith(p_pre)):
+        return False
+    if "[" in p or "[" in q:
+        return True  # a class body makes the literal suffix unreliable; prefix check only
+    return p_suf.endswith(q_suf) or q_suf.endswith(p_suf)
 
 
 def _escape(value: str) -> str:

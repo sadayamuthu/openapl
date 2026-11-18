@@ -59,7 +59,7 @@ def test_inventory_rows(ps):
 
 
 def _ps(tmp_path, agents, ents, max_depth=3):
-    """agents: {id: [(to, [actions])]}; may_delegate edges. acts_for added via ents key."""
+    """agents: {id: (may_delegate [(to, actions)], acts_for [(who, actions)])}; ents: [(grant_to, action)]."""
     lines = ["openapl: '0.1'", "policy: t", "version: 1.0.0", "principals:"]
     for pid, spec in agents.items():
         edges, acts = spec

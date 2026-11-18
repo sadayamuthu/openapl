@@ -77,3 +77,12 @@ def test_actions_overlap():
     assert not o("payments.*", "orders.*")
     assert not o("*.refund", "*.void")
     assert o("pay*", "payments.*")
+
+
+def test_actions_overlap_bracket_and_question():
+    from openapl.match import actions_overlap as o
+    assert o("a[bc]d", "abd")
+    assert o("a[bc]", "ab")
+    assert o("pay[mn]ent.refund", "paynent.refund")
+    assert not o("x[ab]", "y")
+    assert o("a?c", "abc")
