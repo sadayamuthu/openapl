@@ -4,16 +4,11 @@ import re
 import uuid
 
 from openapl.approvals import attributes_hash
+from openapl.controls import CONTROLS
 from openapl.conditions import ConditionError, evaluate_conditions
 from openapl.match import match_action, match_deny_resource, match_resource, selector_matches
 from openapl.model import Decision, Entitlement, Link, PolicySet, Request
 from openapl.policyset import load_policy_dir
-
-# Control table (design §4.5). Moves to its own module in Task 9.
-CONTROLS: dict[str, tuple[str, ...]] = {
-    "NIST-800-53": ("NIST-800-53:AC-3", "NIST-800-53:AC-6"),
-    "SOC2": ("SOC2:CC6.1", "SOC2:CC6.3"),
-}
 
 _DURATION = re.compile(r"^([0-9]+)([smhd])$")
 _UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}

@@ -192,3 +192,34 @@ def inventory(policy_dir: str, as_json: bool) -> None:
     click.echo(f"{'ID':<20} {'KIND':<8} {'OWNER':<20} ENTITLEMENTS")
     for r in rows:
         click.echo(f"{r['id']:<20} {r['kind']:<8} {r['owner']:<20} {', '.join(r['entitlements'])}")
+
+
+@main.command()
+@click.argument("log", type=click.Path(exists=True, dir_okay=False))
+@click.option("--since", type=int, required=True, help="Window start, epoch seconds.")
+@click.option("--until", type=int, required=True, help="Window end, epoch seconds.")
+@click.option("--title", default="OpenAPL decision records", show_default=True)
+@click.option("-o", "output", type=click.Path(), default=None, help="Write JSON here (default stdout).")
+def evidence(log: str, since: int, until: int, title: str, output: str | None) -> None:
+    """Export LOG decisions in a time window as OSCAL assessment-results."""
+    import os
+    from datetime import datetime, timezone
+
+    from openapl.decision_log import read_log
+    from openapl.evidence import assessment_results
+
+    records, skipped = read_log(log, since, until)
+    if skipped:
+        click.echo(f"warning: skipped {skipped} malformed log line(s)", err=True)
+    if not records:
+        click.echo("✗ no decisions in the window", err=True)
+        raise SystemExit(1)
+    epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    when = datetime.fromtimestamp(int(epoch) if epoch else time.time(), tz=timezone.utc)
+    doc = assessment_results(records, title=title, since=since, until=until,
+                             now=when.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    text = json.dumps(doc, ensure_ascii=False, indent=2)
+    if output is None:
+        click.echo(text)
+    else:
+        Path(output).write_text(text + "\n", encoding="utf-8")
