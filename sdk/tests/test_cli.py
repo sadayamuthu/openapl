@@ -142,3 +142,12 @@ def test_cli_validate_rejects_malformed_deny_placeholder(refund_dir):
     r = CliRunner().invoke(main, ["validate", str(refund_dir)])
     assert r.exit_code == 1
     assert "no-bulk-refunds" in r.output and "placeholder" in r.output
+
+
+def test_cli_decide_json_lone_surrogate(refund_dir, tmp_path):
+    log = tmp_path / "log.jsonl"
+    r = _decide(refund_dir, 150, "--resource", "order/1\ud800", "--json", "--log", str(log))
+    assert r.exit_code in (0, 3), r.output
+    assert r.stdout_bytes.isascii()
+    assert json.loads(r.output)["resource"] == "order/1\ud800"
+    assert log.read_bytes().isascii()

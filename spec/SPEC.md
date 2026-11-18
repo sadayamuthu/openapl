@@ -692,7 +692,11 @@ cites those in addition.
 ### 9.3 Decision log
 
 The reference engine logs decisions as append-only JSON Lines, one §9.1
-record per line.
+record per line. Lines are written ASCII-escaped, so any request string
+(for example one holding a lone UTF-16 surrogate) can be recorded. A
+reader skips, and counts as malformed, any line that is not a JSON object
+with an integer `timestamp` and string `decision_id`, `decision`,
+`action` and `resource`.
 
 ## 10. Conformance
 
@@ -830,7 +834,9 @@ decision, and for each control in the union of the records' controls and
 "Decisions recorded for <control>" carrying the control, the count per
 decision value and references to the per-decision observations.
 `reviewed-controls` lists the controls in scope. Empty property values
-are omitted.
+are omitted. A decision recorded with `dev_mode: true` carries a
+`dev-mode` property with value `true`, and each summary states how many
+of its decisions were in dev mode.
 
 ## 12. Known limitations
 

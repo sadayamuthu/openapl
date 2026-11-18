@@ -112,7 +112,7 @@ def decide(policy_dir, chain_text, action, resource, attrs, purpose, task_id, to
         approvals=tuple(parsed), dev_mode=True)
     decision = authorizer.decide(request)
     if as_json:
-        click.echo(json.dumps(decision.to_dict(), ensure_ascii=False, indent=2))
+        click.echo(json.dumps(decision.to_dict(), ensure_ascii=True, indent=2))
     else:
         click.echo(click.style(f"DECISION: {decision.decision}", fg=_COLOR[decision.decision], bold=True))
         for reason in decision.reasons:
@@ -221,7 +221,7 @@ def evidence(log: str, since: int, until: int, title: str, output: str | None) -
         _usage_error(f"SOURCE_DATE_EPOCH must be an integer epoch, got {epoch!r}")
     doc = assessment_results(records, title=title, since=since, until=until,
                              now=when.strftime("%Y-%m-%dT%H:%M:%SZ"))
-    text = json.dumps(doc, ensure_ascii=False, indent=2)
+    text = json.dumps(doc, ensure_ascii=True, indent=2)
     if output is None:
         click.echo(text)
     else:

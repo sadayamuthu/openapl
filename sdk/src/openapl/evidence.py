@@ -58,6 +58,7 @@ def assessment_results(records: list[dict], *, title: str, since: int, until: in
                 ("action", str(r["action"])),
                 ("resource", str(r["resource"])),
                 ("policies", policies),
+                ("dev-mode", "true" if r.get("dev_mode") else ""),
             ) if v],
             "relevant-evidence": [{
                 "description": (f"Decision log line with decision_id {did}, "
@@ -73,10 +74,12 @@ def assessment_results(records: list[dict], *, title: str, since: int, until: in
     for control in controls:
         cited = [r for r in kept if control in LOG_CONTROLS or control in (r.get("controls") or [])]
         counts = ", ".join(f"{sum(1 for r in cited if r['decision'] == v)} {v}" for v in _VALUES)
+        dev = sum(1 for r in cited if r.get("dev_mode"))
         summaries.append({
             "uuid": _uuid(f"summary:{title}:{since}:{until}:{control}"),
             "title": f"Decisions recorded for {control}",
-            "description": (f"{len(cited)} decisions recorded citing {control}: {counts}. "
+            "description": (f"{len(cited)} decisions recorded citing {control}: {counts}; "
+                            f"{dev} in dev mode. "
                             "This lists recorded decisions; it is not an assessment."),
             "methods": ["TEST"],
             "collected": collected,

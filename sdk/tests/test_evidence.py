@@ -123,3 +123,39 @@ def test_cli_evidence_bad_source_date_epoch_exit_1(authorizer, tmp_path, monkeyp
     r = CliRunner().invoke(main, ["evidence", path, "--since", "0", "--until", "2000"])
     assert r.exit_code == 1
     assert "SOURCE_DATE_EPOCH" in r.output
+
+
+def test_dev_mode_prop_and_summary_count(authorizer, tmp_path):
+    path = str(tmp_path / "log.jsonl")
+    log = DecisionLog(path)
+    log.append(authorizer.decide(BASE))
+    log.append(authorizer.decide(replace(BASE, now=1001, dev_mode=True)))
+    records, _ = read_log(path)
+    doc = assessment_results(records, title="t", since=0, until=2000, now=NOW)
+    assert oscal_schema.validate(doc, "assessment-results") == []
+    obs = doc["assessment-results"]["results"][0]["observations"]
+    props = [{p["name"]: p["value"] for p in o["props"]} for o in obs[:2]]
+    assert "dev-mode" not in props[0]
+    assert props[1]["dev-mode"] == "true"
+    for summary in obs[2:]:
+        assert "1 in dev mode" in summary["description"], summary["description"]
+
+
+def test_cli_evidence_skips_incomplete_lines(authorizer, tmp_path):
+    path = _log(authorizer, tmp_path)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write('{"timestamp": 5}\n')
+    r = CliRunner().invoke(main, ["evidence", path, "--since", "0", "--until", "2000"])
+    assert r.exit_code == 0, r.output
+    assert "skipped 1 malformed log line" in r.output
+
+
+def test_cli_evidence_lone_surrogate(authorizer, tmp_path):
+    path = str(tmp_path / "log.jsonl")
+    DecisionLog(path).append(authorizer.decide(replace(BASE, resource="order/1\ud800")))
+    out = tmp_path / "ar.json"
+    r = CliRunner().invoke(main, ["evidence", path, "--since", "0", "--until", "2000", "-o", str(out)])
+    assert r.exit_code == 0, r.output
+    assert out.read_bytes().isascii()
+    r = CliRunner().invoke(main, ["evidence", path, "--since", "0", "--until", "2000"])
+    assert r.exit_code == 0, r.output
