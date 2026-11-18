@@ -5,7 +5,7 @@ import uuid
 
 from openapl.approvals import attributes_hash
 from openapl.conditions import ConditionError, evaluate_conditions
-from openapl.match import match_action, match_resource, selector_matches
+from openapl.match import match_action, match_deny_resource, match_resource, selector_matches
 from openapl.model import Decision, Entitlement, Link, PolicySet, Request
 from openapl.policyset import load_policy_dir
 
@@ -91,10 +91,14 @@ class Authorizer:
         )
 
     def _applies(self, ent: Entitlement, link: Link, request: Request) -> bool:
+        if ent.deny:
+            resource_ok = match_deny_resource(ent.resource, request.resource)
+        else:
+            resource_ok = match_resource(ent.resource, request.resource, request.attributes)
         return (
             any(selector_matches(sel, link, self.ps) for sel in ent.grant_to)
             and match_action(ent.action, request.action)
-            and match_resource(ent.resource, request.resource, request.attributes)
+            and resource_ok
         )
 
     def _expiry_ok(self, ent: Entitlement, request: Request) -> bool:
@@ -103,7 +107,7 @@ class Authorizer:
         if ent.expires == "task":
             return request.task_id is not None
         m = _DURATION.match(ent.expires)
-        if not m or request.token_iat is None:
+        if not m or request.token_iat is None or request.token_iat > request.now:
             return False
         return request.now - request.token_iat <= int(m.group(1)) * _UNITS[m.group(2)]
 
@@ -189,6 +193,8 @@ class Authorizer:
             return self._decision(request, "DENY", ["empty chain"])
 
         reasons: list[str] = []
+        if request.now <= 0:
+            reasons.append("request time not set")
 
         # 2. Well-formed links (R6), known principals and active owners.
         for link in chain:

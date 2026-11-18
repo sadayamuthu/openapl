@@ -35,6 +35,12 @@ def match_resource(pattern: str, resource: str, attributes: dict) -> bool:
     return fnmatchcase(resource, expanded)
 
 
+def match_deny_resource(pattern: str, resource: str) -> bool:
+    # R7: a deny matches in un-interpolated wildcard form; every ${...} is `*`,
+    # so request attributes can never narrow or skip a deny.
+    return fnmatchcase(resource, _PLACEHOLDER.sub("*", pattern))
+
+
 def selector_matches(selector: str, link: Link, ps: PolicySet) -> bool:
     if selector == "*":
         return True

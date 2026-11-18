@@ -1,5 +1,5 @@
 # sdk/tests/test_match.py
-from openapl.match import match_action, match_resource, selector_matches
+from openapl.match import match_action, match_deny_resource, match_resource, selector_matches
 from openapl.model import Link
 
 
@@ -57,3 +57,11 @@ def test_bare_name_matches_principal_id(ps):
 def test_non_list_claims_do_not_match(ps):
     assert not selector_matches("group:g", Link("user:a@b.c", "human", {"groups": 5}), ps)
     assert not selector_matches("group:g", Link("user:a@b.c", "human", {"groups": {"g": 1}}), ps)
+
+
+def test_deny_resource_placeholder_is_wildcard():
+    assert match_deny_resource("doc/${request.doc_id}", "doc/1")
+    assert match_deny_resource("doc/${request.doc_id}/v${request.v}", "doc/1/v2")
+    assert not match_deny_resource("doc/${request.doc_id}", "page/1")
+    assert match_deny_resource("order/bulk-*", "order/bulk-7")
+    assert not match_deny_resource("order/bulk-*", "order/7")

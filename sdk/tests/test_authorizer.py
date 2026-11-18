@@ -2,6 +2,8 @@ import json
 import shutil
 from dataclasses import replace
 
+import pytest
+
 from tests.conftest import EXAMPLE
 from openapl.approvals import attributes_hash
 from openapl.authorizer import Authorizer
@@ -288,3 +290,110 @@ def test_to_dict_keys(authorizer):
         ["refund-agent", "refund-small-orders"],
     ]
     assert isinstance(d["matched"], list)
+
+
+SECRET_POLICY = """\
+openapl: '0.1'
+policy: p
+version: 1.0.0
+principals:
+  bot:
+    kind: agent
+    identity: { oauth_client_id: bot }
+    owner: priya@acme.com
+    acts_for:
+      - who: "user:h@acme.com"
+        actions: [a.read]
+entitlements:
+  - id: everyone-reads
+    grant_to: ["*"]
+    action: a.read
+    resource: "doc/*"
+deny:
+  - id: no-secret-docs
+    grant_to: ["*"]
+    action: a.read
+    resource: "doc/${request.doc_id}"
+    when: ["request.secret == true"]
+"""
+H = Link("user:h@acme.com", "human", {})
+BOT = Link("bot", "agent", {})
+
+
+@pytest.mark.parametrize(
+    "attrs, reason",
+    [
+        ({"doc_id": "1", "secret": True}, "denied by no-secret-docs"),
+        ({"secret": True}, "denied by no-secret-docs"),
+        ({"doc_id": "2", "secret": True}, "denied by no-secret-docs"),
+        ({}, "denied by no-secret-docs (condition error)"),
+    ],
+)
+def test_deny_interpolated_resource_not_bypassable(tmp_path, attrs, reason):
+    authz = _policy_dir(tmp_path, SECRET_POLICY)
+    d = authz.decide(Request((H, BOT), "a.read", "doc/1", attrs, now=1000))
+    assert d.decision == "DENY"
+    assert reason in d.reasons
+
+
+def test_deny_interpolated_resource_not_secret_allows(tmp_path):
+    authz = _policy_dir(tmp_path, SECRET_POLICY)
+    d = authz.decide(Request((H, BOT), "a.read", "doc/1", {"secret": False}, now=1000))
+    assert d.decision == "ALLOW", d.reasons
+
+
+@pytest.mark.parametrize("now", [0, -5])
+def test_request_time_not_set_denies(authorizer, now):
+    d = authorizer.decide(replace(BASE, now=now))
+    assert d.decision == "DENY"
+    assert "request time not set" in d.reasons
+
+
+def test_default_request_now_denies(authorizer):
+    d = authorizer.decide(Request(BASE.chain, BASE.action, BASE.resource, ATTRS,
+                                  purpose="customer-refund", task_id="t1"))
+    assert d.decision == "DENY"
+    assert "request time not set" in d.reasons
+
+
+def test_duration_expiry_future_iat_fails(tmp_path):
+    authz = _policy_dir(tmp_path, DURATION_POLICY)
+    h = Link("user:h@acme.com", "human", {})
+    req = Request((h, Link("bot", "agent", {})), "a.read", "doc/1", token_iat=1001, now=1000)
+    d = authz.decide(req)
+    assert d.decision == "DENY"
+    assert _has(d, "has no grant")
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("entitlement_id", "support-staff-refunds"),
+        ("approver", "role:intern"),
+        ("action", "payments.void"),
+        ("resource", "order/999"),
+        ("attributes_hash", "0" * 64),
+        ("origin", "user:bob@acme.com"),
+        ("caller", "support-agent"),
+    ],
+)
+def test_approval_field_mismatch_not_allowed(authorizer, field, value):
+    attrs = _attrs(amount=350)
+    approval = replace(_approval(attrs), **{field: value})
+    d = authorizer.decide(replace(BASE, attributes=attrs, approvals=(approval,)))
+    assert d.decision != "ALLOW"
+    assert d.decision == "REQUIRE_APPROVAL"
+
+
+def test_approval_exp_equal_now_allows(authorizer):
+    attrs = _attrs(amount=350)
+    d = authorizer.decide(replace(BASE, attributes=attrs, approvals=(_approval(attrs, exp=1000),)))
+    assert d.decision == "ALLOW", d.reasons
+
+
+def test_approval_hash_reordered_keys_allows(authorizer):
+    attrs = _attrs(amount=350)
+    reordered = dict(reversed(list(attrs.items())))
+    assert list(reordered) != list(attrs)
+    d = authorizer.decide(replace(BASE, attributes=attrs, approvals=(_approval(reordered),)))
+    assert d.decision == "ALLOW", d.reasons
