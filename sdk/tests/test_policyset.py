@@ -149,3 +149,10 @@ def test_compilable_when_loads(tmp_path):
           doc("a", AGENT + _rule("deny", "r1", "[a1]", when="[\"request.x == 'y'\"]")))
     assert load_policy_dir(str(tmp_path)).entitlements[0].when == ("request.x == 'y'",)
 
+
+def test_duplicate_policy_version_keeps_compliance(tmp_path):
+    write(tmp_path, "a.apl.yaml", doc("p", "compliance: [SOC2]\n" + AGENT))
+    write(tmp_path, "b.apl.yaml", doc("p", ENT))
+    assert load_policy_dir(str(tmp_path)).frameworks["p@1.0.0"] == ("SOC2",)
+    write(tmp_path, "c.apl.yaml", doc("p", "compliance: [NIST-800-53, SOC2]\n"))
+    assert load_policy_dir(str(tmp_path)).frameworks["p@1.0.0"] == ("SOC2", "NIST-800-53")

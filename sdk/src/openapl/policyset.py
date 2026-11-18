@@ -48,7 +48,9 @@ def load_policy_dir(path: str, directory_snapshot: str | None = None) -> PolicyS
             for fw in comp:
                 if fw not in _FRAMEWORKS:
                     raise PolicyLoadError(f"{fname}: unknown compliance framework {fw!r}")
-            frameworks[source] = comp
+            # Ordered union: several files may share policy@version.
+            known = frameworks.get(source, ())
+            frameworks[source] = known + tuple(fw for fw in dict.fromkeys(comp) if fw not in known)
 
             for block, target in (("delegation", delegation), ("humans", humans)):
                 if block in doc:

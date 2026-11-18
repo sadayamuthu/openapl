@@ -151,7 +151,8 @@ A **policy set** is a directory. Loading it MUST follow these rules:
    `require_human_origin: true`, `groups_claim: groups`,
    `roles_claim: roles`.
 5. `compliance` is per document. It identifies the document by
-   `policy@version`.
+   `policy@version`. When several documents share a `policy@version`,
+   its frameworks are the ordered union of their `compliance` lists.
 6. Every principal MUST have a non-empty `owner`.
 7. An entitlement with `expires: task` MUST have a `purpose`.
 8. Every `may_delegate.to` MUST name a principal defined in the set.
