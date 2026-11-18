@@ -124,3 +124,71 @@ def decide(policy_dir, chain_text, action, resource, attrs, purpose, task_id, to
             click.echo(f"✗ cannot write decision log: {e}", err=True)
             raise SystemExit(1)
     raise SystemExit(_EXIT[decision.decision])
+
+
+def _load_or_exit(policy_dir: str):
+    try:
+        return load_policy_dir(policy_dir)
+    except ValueError as e:
+        click.echo(f"✗ {e}")
+        raise SystemExit(1)
+
+
+@main.command()
+@click.argument("policy_dir", type=click.Path(exists=True, file_okay=False))
+@click.argument("principal")
+@click.option("--on-behalf-of", "on_behalf_of", default=None,
+              help="user:/group:/role: selector; narrow reach to work done for such a human.")
+@click.option("--json", "as_json", is_flag=True, help="Print the explanation as JSON.")
+def explain(policy_dir: str, principal: str, on_behalf_of: str | None, as_json: bool) -> None:
+    """Show what PRINCIPAL could cause if it were hijacked."""
+    from openapl.explain import _edge_dict, explain as explain_principal
+
+    ps = _load_or_exit(policy_dir)
+    try:
+        ex = explain_principal(ps, principal, on_behalf_of)
+    except KeyError:
+        click.echo(f"✗ unknown principal {principal}")
+        raise SystemExit(1)
+    p = ex.principal
+    if as_json:
+        click.echo(json.dumps({
+            "principal": p.id, "kind": p.kind, "owner": p.owner, "identity": p.identity,
+            "acts_for": [_edge_dict(e) for e in ex.acts_for],
+            "entitlements": [e.id for e in ex.entitlements],
+            "delegates_to": [_edge_dict(e) for e in ex.delegates_to],
+            "delegated_from": [{"principal": pid, **_edge_dict(e)} for pid, e in ex.delegated_from],
+            "reach": [{"action": r.action, "resource": r.resource, "via": list(r.via),
+                       "entitlement_id": r.entitlement_id} for r in ex.reach],
+        }, ensure_ascii=False, indent=2))
+        return
+    none = "  (none)"
+    click.echo(f"PRINCIPAL\n  {p.id} ({p.kind})")
+    click.echo(f"OWNER\n  {p.owner}")
+    click.echo("ACTS FOR")
+    click.echo("\n".join(f"  {e.who}: {', '.join(e.actions)}" for e in ex.acts_for) or none)
+    click.echo("ENTITLEMENTS")
+    click.echo("\n".join(f"  {e.id}: {e.action}  {e.resource}" for e in ex.entitlements) or none)
+    click.echo("CAN DELEGATE")
+    click.echo("\n".join(f"  {e.to}: {', '.join(e.actions)}" for e in ex.delegates_to) or none)
+    click.echo("DELEGATED FROM")
+    click.echo("\n".join(f"  {pid}: {', '.join(e.actions)}" for pid, e in ex.delegated_from) or none)
+    suffix = f" (on behalf of {on_behalf_of})" if on_behalf_of else ""
+    click.echo(f"REACH IF COMPROMISED{suffix}")
+    click.echo("\n".join(f"  {r.action}  {r.resource}  via {' → '.join(r.via)}" for r in ex.reach) or none)
+
+
+@main.command()
+@click.argument("policy_dir", type=click.Path(exists=True, file_okay=False))
+@click.option("--json", "as_json", is_flag=True, help="Print the inventory as JSON.")
+def inventory(policy_dir: str, as_json: bool) -> None:
+    """List every principal in POLICY_DIR."""
+    from openapl.explain import inventory as build_inventory
+
+    rows = build_inventory(_load_or_exit(policy_dir))
+    if as_json:
+        click.echo(json.dumps(rows, ensure_ascii=False, indent=2))
+        return
+    click.echo(f"{'ID':<20} {'KIND':<8} {'OWNER':<20} ENTITLEMENTS")
+    for r in rows:
+        click.echo(f"{r['id']:<20} {r['kind']:<8} {r['owner']:<20} {', '.join(r['entitlements'])}")

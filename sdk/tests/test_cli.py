@@ -1,4 +1,6 @@
 # sdk/tests/test_cli.py
+import json
+
 from click.testing import CliRunner
 
 from openapl.cli import main
@@ -100,3 +102,35 @@ def test_cli_decide_deny_exit_3(refund_dir):
     r = CliRunner().invoke(main, ["decide", str(refund_dir), *args, "--attr", "amount=150"])
     assert r.exit_code == 3, r.output
     assert "DECISION: DENY" in r.output
+
+
+def test_cli_explain_text(refund_dir):
+    r = CliRunner().invoke(main, ["explain", str(refund_dir), "support-agent"])
+    assert r.exit_code == 0
+    assert "REACH IF COMPROMISED" in r.output
+    assert "support-agent → refund-agent" in r.output
+
+
+def test_cli_explain_unknown_principal(refund_dir):
+    r = CliRunner().invoke(main, ["explain", str(refund_dir), "nobody"])
+    assert r.exit_code == 1
+    assert "✗ unknown principal nobody" in r.output
+
+
+def test_cli_explain_on_behalf_of_json(refund_dir):
+    r = CliRunner().invoke(main, ["explain", str(refund_dir), "support-agent", "--json",
+                                  "--on-behalf-of", "group:marketing"])
+    assert r.exit_code == 0
+    assert json.loads(r.output)["reach"] == []
+
+
+def test_cli_inventory_json(refund_dir):
+    r = CliRunner().invoke(main, ["inventory", str(refund_dir), "--json"])
+    assert r.exit_code == 0
+    assert [row["id"] for row in json.loads(r.output)] == ["refund-agent", "support-agent"]
+
+
+def test_cli_inventory_table(refund_dir):
+    r = CliRunner().invoke(main, ["inventory", str(refund_dir)])
+    assert r.exit_code == 0
+    assert "support-agent" in r.output and "refund-small-orders" in r.output
