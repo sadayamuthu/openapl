@@ -51,3 +51,10 @@ class PolicySet:
 
 class PolicyLoadError(ValueError):
     pass
+
+
+@dataclass(frozen=True)
+class Link:
+    principal_id: str
+    kind: str
+    claims: dict
