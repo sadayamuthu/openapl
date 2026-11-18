@@ -231,10 +231,36 @@ def test_empty_chain_denies(authorizer):
     assert d.reasons == ("empty chain",)
 
 
-def test_internal_error_denies(authorizer):
-    d = authorizer.decide(replace(BASE, attributes=_attrs(blob=object())))
+def test_internal_error_denies(authorizer, monkeypatch):
+    def boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(authorizer, "_has_edge", boom)
+    d = authorizer.decide(BASE)
     assert d.decision == "DENY"
-    assert d.reasons[0].startswith("internal error: ")
+    assert d.reasons == ("internal error: RuntimeError",)
+    assert d.chain == ("user:alice@acme.com", "support-agent", "refund-agent")
+
+
+def test_human_spoof_as_caller_denied(authorizer):
+    spoof = Link("refund-agent", "human", {})
+    d = authorizer.decide(replace(BASE, chain=(alice, sa, spoof)))
+    assert d.decision == "DENY"
+    assert "malformed human link refund-agent" in d.reasons
+
+
+def test_human_spoof_as_origin_denied(authorizer):
+    spoof = Link("refund-agent", "human", {"groups": ["support-staff"]})
+    d = authorizer.decide(replace(BASE, chain=(spoof, sa, ra)))
+    assert d.decision == "DENY"
+    assert "malformed human link refund-agent" in d.reasons
+
+
+def test_agent_with_user_prefix_denied(authorizer):
+    fake = Link("user:mallory@acme.com", "agent", {})
+    d = authorizer.decide(replace(BASE, chain=(alice, sa, fake)))
+    assert d.decision == "DENY"
+    assert "malformed human link user:mallory@acme.com" in d.reasons
 
 
 def test_decision_evidence(authorizer):

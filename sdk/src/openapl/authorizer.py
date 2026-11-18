@@ -190,8 +190,11 @@ class Authorizer:
 
         reasons: list[str] = []
 
-        # 2. Known principals and active owners.
+        # 2. Well-formed links (R6), known principals and active owners.
         for link in chain:
+            if (link.kind == "human") != link.principal_id.startswith("user:"):
+                reasons.append(f"malformed human link {link.principal_id}")
+                continue
             if link.kind == "human":
                 continue
             p = ps.principals.get(link.principal_id)
