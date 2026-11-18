@@ -7,7 +7,7 @@ import pytest
 from tests.conftest import EXAMPLE
 from openapl.approvals import attributes_hash
 from openapl.authorizer import Authorizer
-from openapl.model import Approval, Link, Request
+from openapl.model import Approval, Edge, Entitlement, Link, PolicySet, Principal, Request
 
 alice = Link("user:alice@acme.com", "human", {"groups": ["support-staff"]})
 sa = Link("support-agent", "agent", {})
@@ -397,3 +397,24 @@ def test_approval_hash_reordered_keys_allows(authorizer):
     assert list(reordered) != list(attrs)
     d = authorizer.decide(replace(BASE, attributes=attrs, approvals=(_approval(reordered),)))
     assert d.decision == "ALLOW", d.reasons
+
+
+def test_p1_literal_counterexample_relay_supplies_missing_edge():
+    # Found by hypothesis (task 6) against the literal design §4.4 P1 wording. With
+    # origin and caller fixed, inserting a0 turns DENY into ALLOW, because the relay
+    # supplies the direct edge user:h -> a1 that is missing. The longer chain meets
+    # every clause of §4.4, so this is the semantics, not an engine bug; P1 holds
+    # when the insertion splits an edge that exists (tests/test_properties.py).
+    src = "p.apl.yaml"
+    a0 = Principal("a0", "agent", {}, "user:owner",
+                   (Edge(("a.read",), who="group:g2"),), (Edge(("a.read",), to="a1"),), src, src)
+    a1 = Principal("a1", "agent", {}, "user:owner", (), (), src, src)
+    grant = Entitlement("p0", ("*",), "a.read", "r/1", (), None, "never", None, False, src, src)
+    ps = PolicySet({"a0": a0, "a1": a1}, (grant,), 2, True, "groups", "roles", {}, None)
+    h = Link("user:h", "human", {"groups": ["g2"]})
+    direct = Request((h, Link("a1", "agent", {})), "a.read", "r/1", {"n": 0}, now=1000)
+    relayed = replace(direct, chain=(h, Link("a0", "agent", {}), Link("a1", "agent", {})))
+    d = Authorizer(ps).decide(direct)
+    assert d.decision == "DENY"
+    assert d.reasons == ("no delegation edge user:h -> a1 for a.read",)
+    assert Authorizer(ps).decide(relayed).decision == "ALLOW"
