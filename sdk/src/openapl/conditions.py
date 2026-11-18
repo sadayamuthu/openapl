@@ -16,19 +16,22 @@ class ConditionError(Exception):
 def _program(expr: str):
     try:
         return _ENV.program(_ENV.compile(expr))
-    except celpy.CELParseError as e:
+    except Exception as e:
         raise ConditionError(f"condition does not compile: {expr!r}: {e}") from e
 
 
 def evaluate_conditions(exprs: tuple[str, ...], activation: dict) -> bool:
     if not exprs:
         return True
-    cel_activation = celpy.json_to_cel(activation)
+    try:
+        cel_activation = celpy.json_to_cel(activation)
+    except Exception as e:
+        raise ConditionError(f"activation not convertible to CEL: {e}") from e
     for expr in exprs:
         program = _program(expr)
         try:
             result = program.evaluate(cel_activation)
-        except celpy.CELEvalError as e:
+        except Exception as e:
             raise ConditionError(f"condition failed to evaluate: {expr!r}: {e}") from e
         if not isinstance(result, celtypes.BoolType):
             raise ConditionError(f"condition is not boolean: {expr!r}")

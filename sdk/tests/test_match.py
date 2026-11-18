@@ -52,3 +52,8 @@ def test_user_selector_only_matches_humans(ps):
 def test_bare_name_matches_principal_id(ps):
     assert selector_matches("refund-agent", Link("refund-agent", "agent", {}), ps)
     assert not selector_matches("refund-agent", Link("other", "agent", {}), ps)
+
+
+def test_non_list_claims_do_not_match(ps):
+    assert not selector_matches("group:g", Link("user:a@b.c", "human", {"groups": 5}), ps)
+    assert not selector_matches("group:g", Link("user:a@b.c", "human", {"groups": {"g": 1}}), ps)

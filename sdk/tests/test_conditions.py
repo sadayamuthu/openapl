@@ -41,3 +41,9 @@ def test_all_must_be_true():
 
 def test_empty_conditions_true():
     assert evaluate_conditions((), {})
+
+
+def test_unconvertible_activation_raises():
+    import datetime
+    with pytest.raises(ConditionError):
+        evaluate_conditions(("request.d == 1",), {"request": {"d": datetime.date(2026, 1, 1)}})

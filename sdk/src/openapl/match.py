@@ -45,8 +45,10 @@ def selector_matches(selector: str, link: Link, ps: PolicySet) -> bool:
             return False
         prefix, _, name = selector.partition(":")
         claim = ps.groups_claim if prefix == "group" else ps.roles_claim
-        values = link.claims.get(claim) or []
+        values = link.claims.get(claim)
         if isinstance(values, str):
             values = [values]
+        if not isinstance(values, (list, tuple)):
+            return False
         return name in values
     return selector == link.principal_id
