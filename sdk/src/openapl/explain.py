@@ -2,7 +2,7 @@
 """explain and inventory: what could a principal cause if it were hijacked."""
 from dataclasses import dataclass
 
-from openapl.match import match_action
+from openapl.match import actions_overlap
 from openapl.model import Edge, Entitlement, PolicySet, Principal
 
 
@@ -30,33 +30,37 @@ def _grants_for(ps: PolicySet, pid: str) -> tuple[Entitlement, ...]:
 
 
 def _covers(edge_actions: tuple[str, ...], grant_action: str) -> bool:
-    return any(a == grant_action or match_action(a, grant_action) for a in edge_actions)
+    return any(actions_overlap(a, grant_action) for a in edge_actions)
 
 
 def explain(ps: PolicySet, principal_id: str, on_behalf_of: str | None = None) -> Explanation:
+    """Reach if hijacked. Conservative: may over-report, never under-reports.
+
+    Plain explain allows max_depth agent hops; with on_behalf_of the acts_for hop
+    counts, leaving max_depth - 1 agent hops. Actions are compared as glob overlap.
+    """
     principal = ps.principals[principal_id]  # KeyError for unknown ids
     delegated_from = tuple(sorted(
         ((pid, edge) for pid, p in ps.principals.items() for edge in p.may_delegate
          if edge.to == principal_id),
         key=lambda t: t[0]))
 
-    # Hops are (edges so far); the first-hop filter for on_behalf_of is a list of allowed actions.
-    allowed: tuple[str, ...] | None = None
+    # R11: conservative. Over-reporting is allowed; under-reporting is not.
+    depth = ps.max_depth
+    acts_actions: tuple[str, ...] | None = None
+    sel_actions: tuple[str, ...] = ()
     if on_behalf_of is not None:
-        granted = [e for e in ps.entitlements if not e.deny and on_behalf_of in e.grant_to]
-        allowed_set: list[str] = []
-        for entry in principal.acts_for:
-            if entry.who != on_behalf_of:
-                continue
-            for a in entry.actions:
-                if any(_covers((a,), g.action) for g in granted) and a not in allowed_set:
-                    allowed_set.append(a)
-        allowed = tuple(allowed_set)
+        depth -= 1  # the acts_for hop counts toward max_depth
+        acts_actions = tuple(a for entry in principal.acts_for if entry.who == on_behalf_of
+                             for a in entry.actions)
+        sel_actions = tuple(e.action for e in ps.entitlements
+                            if not e.deny and on_behalf_of in e.grant_to)
 
     reach: list[Reach] = []
 
     def keep(e: Entitlement, edges: list[Edge]) -> bool:
-        if allowed is not None and not _covers(allowed, e.action):
+        if acts_actions is not None and not (
+                _covers(acts_actions, e.action) and _covers(sel_actions, e.action)):
             return False
         return all(_covers(edge.actions, e.action) for edge in edges)
 
@@ -64,7 +68,7 @@ def explain(ps: PolicySet, principal_id: str, on_behalf_of: str | None = None) -
         for e in _grants_for(ps, pid):
             if keep(e, edges):
                 reach.append(Reach(e.action, e.resource, path, e.id))
-        if len(edges) >= ps.max_depth:
+        if len(edges) >= depth:
             return
         node = ps.principals.get(pid)
         if node is None:
@@ -74,7 +78,7 @@ def explain(ps: PolicySet, principal_id: str, on_behalf_of: str | None = None) -
                 continue
             walk(edge.to, path + (edge.to,), edges + [edge])
 
-    if allowed is None or allowed:
+    if acts_actions is None or acts_actions:
         walk(principal_id, (principal_id,), [])
     reach_sorted = tuple(sorted(set(reach), key=lambda r: (r.via, r.entitlement_id)))
     return Explanation(
@@ -87,7 +91,7 @@ def explain(ps: PolicySet, principal_id: str, on_behalf_of: str | None = None) -
     )
 
 
-def _edge_dict(edge: Edge) -> dict:
+def edge_dict(edge: Edge) -> dict:
     d: dict = {"actions": list(edge.actions)}
     if edge.to is not None:
         d["to"] = edge.to
@@ -105,8 +109,8 @@ def inventory(ps: PolicySet) -> list[dict]:
             "kind": p.kind,
             "owner": p.owner,
             "identity": p.identity,
-            "acts_for": [_edge_dict(e) for e in p.acts_for],
-            "may_delegate": [_edge_dict(e) for e in p.may_delegate],
+            "acts_for": [edge_dict(e) for e in p.acts_for],
+            "may_delegate": [edge_dict(e) for e in p.may_delegate],
             "entitlements": [e.id for e in _grants_for(ps, pid)],
             "source_file": p.source_file,
         })

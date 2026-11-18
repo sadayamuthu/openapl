@@ -65,3 +65,15 @@ def test_deny_resource_placeholder_is_wildcard():
     assert not match_deny_resource("doc/${request.doc_id}", "page/1")
     assert match_deny_resource("order/bulk-*", "order/bulk-7")
     assert not match_deny_resource("order/bulk-*", "order/7")
+
+
+def test_actions_overlap():
+    from openapl.match import actions_overlap as o
+    assert o("payments.refund", "payments.refund")
+    assert not o("payments.refund", "payments.void")
+    assert o("payments.*", "payments.refund") and o("payments.refund", "payments.*")
+    assert o("payments.*", "*.refund")
+    assert o("*", "x.y")
+    assert not o("payments.*", "orders.*")
+    assert not o("*.refund", "*.void")
+    assert o("pay*", "payments.*")

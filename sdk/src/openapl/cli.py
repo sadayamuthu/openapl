@@ -130,7 +130,7 @@ def _load_or_exit(policy_dir: str):
     try:
         return load_policy_dir(policy_dir)
     except ValueError as e:
-        click.echo(f"✗ {e}")
+        click.echo(f"✗ {e}", err=True)
         raise SystemExit(1)
 
 
@@ -142,22 +142,22 @@ def _load_or_exit(policy_dir: str):
 @click.option("--json", "as_json", is_flag=True, help="Print the explanation as JSON.")
 def explain(policy_dir: str, principal: str, on_behalf_of: str | None, as_json: bool) -> None:
     """Show what PRINCIPAL could cause if it were hijacked."""
-    from openapl.explain import _edge_dict, explain as explain_principal
+    from openapl.explain import edge_dict, explain as explain_principal
 
     ps = _load_or_exit(policy_dir)
     try:
         ex = explain_principal(ps, principal, on_behalf_of)
     except KeyError:
-        click.echo(f"✗ unknown principal {principal}")
+        click.echo(f"✗ unknown principal {principal}", err=True)
         raise SystemExit(1)
     p = ex.principal
     if as_json:
         click.echo(json.dumps({
             "principal": p.id, "kind": p.kind, "owner": p.owner, "identity": p.identity,
-            "acts_for": [_edge_dict(e) for e in ex.acts_for],
+            "acts_for": [edge_dict(e) for e in ex.acts_for],
             "entitlements": [e.id for e in ex.entitlements],
-            "delegates_to": [_edge_dict(e) for e in ex.delegates_to],
-            "delegated_from": [{"principal": pid, **_edge_dict(e)} for pid, e in ex.delegated_from],
+            "delegates_to": [edge_dict(e) for e in ex.delegates_to],
+            "delegated_from": [{"principal": pid, **edge_dict(e)} for pid, e in ex.delegated_from],
             "reach": [{"action": r.action, "resource": r.resource, "via": list(r.via),
                        "entitlement_id": r.entitlement_id} for r in ex.reach],
         }, ensure_ascii=False, indent=2))

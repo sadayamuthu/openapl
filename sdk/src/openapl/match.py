@@ -13,6 +13,23 @@ def match_action(pattern: str, action: str) -> bool:
     return pattern == action or fnmatchcase(action, pattern)
 
 
+def actions_overlap(p: str, q: str) -> bool:
+    """True when two glob patterns could match a common action (conservative)."""
+    if not (_GLOB_CHARS.search(p) or _GLOB_CHARS.search(q)):
+        return p == q
+
+    def parts(x: str) -> tuple[str, str]:
+        first = _GLOB_CHARS.search(x)
+        if first is None:
+            return x, x
+        last = max(i for i, c in enumerate(x) if c in "*?[")
+        return x[:first.start()], x[last + 1:]
+
+    (p_pre, p_suf), (q_pre, q_suf) = parts(p), parts(q)
+    return ((p_pre.startswith(q_pre) or q_pre.startswith(p_pre))
+            and (p_suf.endswith(q_suf) or q_suf.endswith(p_suf)))
+
+
 def _escape(value: str) -> str:
     # Bracket-escape so an attribute value is matched literally, never as a glob.
     return _GLOB_CHARS.sub(lambda m: "[" + m.group(0) + "]", value)
