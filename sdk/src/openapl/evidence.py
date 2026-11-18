@@ -2,9 +2,8 @@
 """OSCAL 1.2.3 assessment-results built from the decision log.
 
 Patterns copied from opengpl-by-design/opengpl/sdk/src/opengpl/audit/oscal.py.
-The document says decisions were recorded. It makes no claim that any control
-is met; the `satisfied` state is the status value OSCAL requires on a finding
-target and is paired with a description that only counts recorded decisions.
+The document says decisions were recorded. It has no findings and makes no
+determination about any control: per-control summaries are observations.
 """
 import uuid
 from datetime import datetime, timezone
@@ -53,13 +52,13 @@ def assessment_results(records: list[dict], *, title: str, since: int, until: in
             "description": f"Decision {r['decision']} recorded in the decision log.",
             "methods": ["TEST"],
             "collected": _stamp(r["timestamp"]),
-            "props": [
-                _prop("decision", str(r["decision"])),
-                _prop("chain", ",".join(r.get("chain") or [])),
-                _prop("action", str(r["action"])),
-                _prop("resource", str(r["resource"])),
-                _prop("policies", policies),
-            ],
+            "props": [_prop(n, v) for n, v in (
+                ("decision", str(r["decision"])),
+                ("chain", ",".join(r.get("chain") or [])),
+                ("action", str(r["action"])),
+                ("resource", str(r["resource"])),
+                ("policies", policies),
+            ) if v],
             "relevant-evidence": [{
                 "description": (f"Decision log line with decision_id {did}, "
                                 f"timestamp {r['timestamp']}.")
@@ -69,23 +68,21 @@ def assessment_results(records: list[dict], *, title: str, since: int, until: in
 
     controls = sorted({c for r in kept for c in (r.get("controls") or [])} | set(LOG_CONTROLS))
     ar_key = f"{title}:{since}:{until}:" + ",".join(sorted(obs_uuid))
-    findings = []
+    summaries = []
+    collected = _stamp(until)
     for control in controls:
         cited = [r for r in kept if control in LOG_CONTROLS or control in (r.get("controls") or [])]
         counts = ", ".join(f"{sum(1 for r in cited if r['decision'] == v)} {v}" for v in _VALUES)
-        findings.append({
-            "uuid": _uuid(f"finding:{ar_key}:{control}"),
+        summaries.append({
+            "uuid": _uuid(f"summary:{title}:{since}:{until}:{control}"),
             "title": f"Decisions recorded for {control}",
             "description": (f"{len(cited)} decisions recorded citing {control}: {counts}. "
                             "This lists recorded decisions; it is not an assessment."),
+            "methods": ["TEST"],
+            "collected": collected,
             "props": [_prop("control", control)],
-            "target": {
-                "type": "objective-id",
-                "target-id": _token(control),
-                "status": {"state": "satisfied"},
-            },
-            "related-observations": [{"observation-uuid": obs_uuid[r["decision_id"]]}
-                                     for r in cited],
+            "relevant-evidence": [{"href": f"#{obs_uuid[r['decision_id']]}",
+                                   "description": f"Decision {r['decision_id']}"} for r in cited],
         })
 
     res_uuid = _uuid(f"res:{ar_key}")
@@ -99,8 +96,7 @@ def assessment_results(records: list[dict], *, title: str, since: int, until: in
         "reviewed-controls": {"control-selections": [{
             "include-controls": [{"control-id": _token(c)} for c in controls]
         }]},
-        "observations": observations,
-        "findings": findings,
+        "observations": observations + summaries,
     }
     return {"assessment-results": {
         "uuid": _uuid(f"ar:{ar_key}"),

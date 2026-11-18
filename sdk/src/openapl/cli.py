@@ -215,7 +215,10 @@ def evidence(log: str, since: int, until: int, title: str, output: str | None) -
         click.echo("✗ no decisions in the window", err=True)
         raise SystemExit(1)
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
-    when = datetime.fromtimestamp(int(epoch) if epoch else time.time(), tz=timezone.utc)
+    try:
+        when = datetime.fromtimestamp(int(epoch) if epoch else time.time(), tz=timezone.utc)
+    except (ValueError, OverflowError, OSError):
+        _usage_error(f"SOURCE_DATE_EPOCH must be an integer epoch, got {epoch!r}")
     doc = assessment_results(records, title=title, since=since, until=until,
                              now=when.strftime("%Y-%m-%dT%H:%M:%SZ"))
     text = json.dumps(doc, ensure_ascii=False, indent=2)
