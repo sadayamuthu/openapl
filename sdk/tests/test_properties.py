@@ -19,6 +19,14 @@ AGENT_IDS = tuple(f"a{i}" for i in range(5))
 ORIGIN_ID = "user:h"
 SRC = "p.apl.yaml"
 WHEN_N = "request.n <= 5"
+# Conditions that read the activation, so the grade-independence check in P1(a)
+# can fail. chain.depth is a condition error since R10.
+CALLER_A0 = 'chain.caller.id == "a0"'
+PRINCIPAL_A1 = 'principal.id == "a1"'
+ORIGIN_G1 = '"g1" in chain.origin.groups'
+DEPTH_2 = "chain.depth >= 2"
+CONDITIONS = (WHEN_N, CALLER_A0, PRINCIPAL_A1, ORIGIN_G1, DEPTH_2)
+ROLES = ("r1",)
 APPROVAL = "require_approval(role:boss)"
 RANK = {"DENY": 0, "REQUIRE_APPROVAL": 1, "ALLOW": 2}
 
@@ -32,8 +40,9 @@ _actions = st.lists(st.sampled_from(ACTION_PATTERNS), min_size=1, max_size=3, un
 @st.composite
 def _entitlement(draw, idx: int, agents: tuple[str, ...]) -> Entitlement:
     deny = draw(st.integers(0, 5)) == 0
-    selectors = ["*", ORIGIN_ID, *(f"group:{g}" for g in GROUPS), *agents]
-    when = draw(st.sampled_from([(), (WHEN_N,), (WHEN_N,)]))
+    selectors = ["*", ORIGIN_ID, *(f"group:{g}" for g in GROUPS), *(f"role:{r}" for r in ROLES),
+                 *agents]
+    when = draw(st.sampled_from([(), (WHEN_N,), *((c,) for c in CONDITIONS)]))
     return Entitlement(
         id=f"{'d' if deny else 'e'}{idx}",
         grant_to=tuple(draw(st.lists(st.sampled_from(selectors), min_size=1, max_size=2, unique=True))),
@@ -76,7 +85,8 @@ _likely = st.sampled_from([True, True, True, False])
 def cases(draw) -> tuple[PolicySet, Request]:
     ps = draw(policy_sets())
     groups = list(draw(st.sampled_from([(), ("g1",), ("g2",), ("g1", "g2")])))
-    origin = Link(ORIGIN_ID, "human", {"groups": groups})
+    roles = list(draw(st.sampled_from([(), ROLES])))
+    origin = Link(ORIGIN_ID, "human", {"groups": groups, "roles": roles})
     action = draw(st.sampled_from(ACTIONS))
     resource = draw(st.sampled_from(RESOURCES))
     agents = draw(st.lists(st.sampled_from(sorted(ps.principals)), min_size=1, max_size=5))
@@ -102,7 +112,8 @@ def cases(draw) -> tuple[PolicySet, Request]:
         if not draw(_likely):
             continue
         if link.kind == "human":
-            selectors = ["*", link.principal_id, *(f"group:{g}" for g in groups)]
+            selectors = ["*", link.principal_id, *(f"group:{g}" for g in groups),
+                         *(f"role:{r}" for r in roles)]
         else:
             selectors = ["*", link.principal_id]
         when = draw(st.sampled_from([(), (WHEN_N,)]))
@@ -126,24 +137,31 @@ def cases(draw) -> tuple[PolicySet, Request]:
 def _selects(selector: str, link: Link) -> bool:
     if selector in ("*", link.principal_id):
         return True
-    if selector.startswith("group:") and link.kind == "human":
-        return selector[len("group:"):] in link.claims.get("groups", [])
+    for prefix, claim in (("group:", "groups"), ("role:", "roles")):
+        if selector.startswith(prefix) and link.kind == "human":
+            return selector[len(prefix):] in link.claims.get(claim, [])
     return False
 
 
-def _when_holds(when: tuple[str, ...], request: Request) -> bool:
-    # WHEN_N is the only condition the strategies generate for grants.
-    return WHEN_N not in when or request.attributes["n"] <= 5
+def _condition(expr: str, request: Request, link: Link) -> bool:
+    # Mirrors the CEL meaning of the generated conditions; DEPTH_2 is an error (R10).
+    return {
+        WHEN_N: lambda: request.attributes["n"] <= 5,
+        CALLER_A0: lambda: request.chain[-1].principal_id == "a0",
+        PRINCIPAL_A1: lambda: link.principal_id == "a1",
+        ORIGIN_G1: lambda: "g1" in request.chain[0].claims["groups"],
+        DEPTH_2: lambda: False,
+    }[expr]()
 
 
-def _origin_granted(ps: PolicySet, request: Request) -> bool:
-    origin = request.chain[0]
+def _granted(ps: PolicySet, request: Request, link: Link) -> bool:
+    # GRANTED without approvals: some grant matches with every condition true.
     return any(
         not e.deny
-        and any(_selects(s, origin) for s in e.grant_to)
+        and any(_selects(s, link) for s in e.grant_to)
         and fnmatchcase(request.action, e.action)
         and fnmatchcase(request.resource, e.resource)
-        and _when_holds(e.when, request)
+        and all(_condition(c, request, link) for c in e.when)
         for e in ps.entitlements
     )
 
@@ -229,8 +247,9 @@ def test_p1_bounded_by_endpoints(case):
     decision = authorizer.decide(request).decision
     event(f"{decision} with grades {'/'.join(grades)}")
     assert RANK[decision] <= min(GRADE_RANK[g] for g in grades)
-    if decision == "ALLOW":  # cross-check the engine's grade with an independent oracle
-        assert _origin_granted(ps, request)
+    if decision == "ALLOW":  # cross-check the engine's grades with an independent oracle
+        assert _granted(ps, request, chain[0])
+        assert _granted(ps, request, chain[-1])
 
 
 # -- P2 ------------------------------------------------------------------------
@@ -254,7 +273,8 @@ def test_p3_deny_overrides(case, data):
     ps, request = case
     link = data.draw(st.sampled_from(request.chain), label="denied link")
     if link.kind == "human":
-        selectors = ["*", link.principal_id, *(f"group:{g}" for g in link.claims["groups"])]
+        selectors = ["*", link.principal_id, *(f"group:{g}" for g in link.claims["groups"]),
+                     *(f"role:{r}" for r in link.claims["roles"])]
     else:
         selectors = ["*", link.principal_id]
     deny = Entitlement(
@@ -313,8 +333,36 @@ def test_p5_fail_closed(case, data):
         else:
             absent = replace(ps, entitlements=tuple(e for e in ps.entitlements if e is not target))
             assert RANK[d.decision] <= RANK[_decide(absent, request)]
-    # Unknown link: always DENY.
-    j = data.draw(st.integers(0, len(request.chain) - 1), label="unknown link")
-    old = request.chain[j]
-    chain = (*request.chain[:j], Link("unknown:x", old.kind, {}), *request.chain[j + 1:])
-    assert _decide(ps, replace(request, chain=chain)) == "DENY"
+    # Unknown link. At the origin, a human link without the user: prefix is denied (R6).
+    # Weighted toward the caller, the one position where nothing else need deny.
+    last = len(request.chain) - 1
+    j = data.draw(st.sampled_from([*range(last + 1), last, last]), label="unknown link")
+    if j == 0:
+        chain = (Link("unknown:x", "human", request.chain[0].claims), *request.chain[1:])
+        d = Authorizer(ps).decide(replace(request, chain=chain))
+        assert d.decision == "DENY"
+        assert "malformed human link unknown:x" in d.reasons
+        return
+    # Elsewhere, the unknown-principal check must be the only added cause of DENY.
+    # Plant an edge into unknown:x (when its predecessor is an agent) and a grant to
+    # it. An unknown principal cannot hold acts_for or may_delegate entries, so the
+    # control makes unknown:x a known agent with no edges of its own: the reasons
+    # must then differ by exactly "unknown principal unknown:x".
+    chain = (*request.chain[:j], Link("unknown:x", "agent", {}), *request.chain[j + 1:])
+    principals = dict(ps.principals)
+    prev = chain[j - 1]
+    if prev.kind == "agent":
+        p = principals[prev.principal_id]
+        principals[p.id] = replace(p, may_delegate=(*p.may_delegate, Edge((request.action,), to="unknown:x")))
+    grant = Entitlement("unknown-grant", ("unknown:x",), request.action, request.resource, (), None,
+                        "never", None, False, SRC, SRC)
+    unknown_ps = replace(ps, principals=principals, entitlements=(*ps.entitlements, grant))
+    control_ps = replace(unknown_ps, principals={
+        **principals, "unknown:x": Principal("unknown:x", "agent", {}, "user:owner", (), (), SRC, SRC)})
+    unknown_req = replace(request, chain=chain)
+    d = Authorizer(unknown_ps).decide(unknown_req)
+    control = Authorizer(control_ps).decide(unknown_req)
+    event(f"unknown link; control {control.decision}")
+    assert d.decision == "DENY"
+    control_reasons = set(control.reasons) if control.decision == "DENY" else set()
+    assert set(d.reasons) == control_reasons | {"unknown principal unknown:x"}
