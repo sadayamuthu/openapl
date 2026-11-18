@@ -1,14 +1,18 @@
 # sdk/src/openapl/policyset.py
 """Load a directory of *.apl.yaml files into a PolicySet."""
 import json
+import re
 from pathlib import Path
 
 import yaml
 
 from openapl import schema
+from openapl.conditions import ConditionError, compile_condition
 from openapl.model import Edge, Entitlement, PolicyLoadError, PolicySet, Principal
 
 _FRAMEWORKS = {"NIST-800-53", "SOC2"}
+_VALID_PLACEHOLDER = re.compile(r"\$\{request\.[A-Za-z0-9_.-]+\}")
+_HUMAN_SELECTOR = re.compile(r"(user|group|role):.+", re.DOTALL)
 
 
 def _edges(items, key: str) -> tuple[Edge, ...]:
@@ -81,6 +85,16 @@ def load_policy_dir(path: str, directory_snapshot: str | None = None) -> PolicyS
                             f"duplicate entitlement id {eid!r} in {ent_files[eid]} and {fname}"
                         )
                     ent_files[eid] = fname
+                    if "${" in _VALID_PLACEHOLDER.sub("", e["resource"]):
+                        raise PolicyLoadError(
+                            f"{fname}: {key} {eid!r} has a malformed placeholder in resource "
+                            f"{e['resource']!r} (expected ${{request.<key>}})"
+                        )
+                    for expr in e.get("when") or ():
+                        try:
+                            compile_condition(expr)
+                        except ConditionError as err:
+                            raise PolicyLoadError(f"{fname}: {key} {eid!r}: {err}") from err
                     expires = e.get("expires", "never")
                     if expires == "task" and not e.get("purpose"):
                         raise PolicyLoadError(
@@ -107,6 +121,15 @@ def load_policy_dir(path: str, directory_snapshot: str | None = None) -> PolicyS
             if edge.to not in principals:
                 raise PolicyLoadError(
                     f"{p.source_file}: principal {p.id!r} may_delegate to unknown principal {edge.to!r}"
+                )
+
+    for e in entitlements:
+        for sel in e.grant_to:
+            if not (sel == "*" or _HUMAN_SELECTOR.fullmatch(sel) or sel in principals):
+                kind = "deny" if e.deny else "entitlements"
+                raise PolicyLoadError(
+                    f"{e.source_file}: {kind} {e.id!r} has unknown grant_to selector {sel!r} "
+                    "(expected '*', user:/group:/role:<name> or a defined principal id)"
                 )
 
     active = None

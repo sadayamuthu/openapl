@@ -93,3 +93,59 @@ def test_directory_snapshot_loaded(refund_dir, tmp_path):
     snap.write_text(json.dumps({"active": ["priya@acme.com"]}))
     ps = load_policy_dir(str(refund_dir), str(snap))
     assert ps.active_humans == frozenset({"priya@acme.com"})
+
+
+def _rule(key, eid, grant_to, resource="'r/*'", when=None):
+    text = (f"{key}:\n  - id: {eid}\n    grant_to: {grant_to}\n    action: x.y\n"
+            f"    resource: {resource}\n")
+    if when is not None:
+        text += f"    when: {when}\n"
+    return text
+
+
+@pytest.mark.parametrize("key", ["entitlements", "deny"])
+@pytest.mark.parametrize("resource", [
+    "'doc/${args.doc_id}'", "'doc/${request.doc_id'", "'doc/${ request.doc_id }'",
+    "'doc/${request.}'", "'doc/${request.a b}'", "'doc/${request.${request.x}}'",
+])
+def test_malformed_placeholder_is_load_error(tmp_path, key, resource):
+    write(tmp_path, "a.apl.yaml", doc("a", AGENT + _rule(key, "r1", "[a1]", resource)))
+    with pytest.raises(PolicyLoadError, match=r"a\.apl\.yaml.*'r1'.*placeholder"):
+        load_policy_dir(str(tmp_path))
+
+
+def test_valid_placeholders_load(tmp_path):
+    write(tmp_path, "a.apl.yaml",
+          doc("a", AGENT + _rule("deny", "r1", "[a1]", "'doc/${request.a_b.c-1}/${request.X9}'")))
+    assert [e.id for e in load_policy_dir(str(tmp_path)).entitlements] == ["r1"]
+
+
+@pytest.mark.parametrize("key", ["entitlements", "deny"])
+@pytest.mark.parametrize("selector", ["agent:bot", "bott", "'group:'", "'user:'", "'role:'", "''"])
+def test_unknown_selector_is_load_error(tmp_path, key, selector):
+    write(tmp_path, "a.apl.yaml", doc("a", AGENT + _rule(key, "r1", f"[a1, {selector}]")))
+    with pytest.raises(PolicyLoadError, match=r"a\.apl\.yaml.*'r1'.*selector"):
+        load_policy_dir(str(tmp_path))
+
+
+def test_valid_selectors_load(tmp_path):
+    write(tmp_path, "a.apl.yaml", doc("a", AGENT))
+    # a principal defined in a later file is still a defined principal id
+    write(tmp_path, "b.apl.yaml", doc("b", _rule(
+        "deny", "r1", "['*', 'user:u@x.com', 'group:g', 'role:r', a1]")))
+    assert [e.id for e in load_policy_dir(str(tmp_path)).entitlements] == ["r1"]
+
+
+@pytest.mark.parametrize("key", ["entitlements", "deny"])
+@pytest.mark.parametrize("expr", ["request.x ==", "(", "request.x ++ 1"])
+def test_uncompilable_when_is_load_error(tmp_path, key, expr):
+    write(tmp_path, "a.apl.yaml", doc("a", AGENT + _rule(key, "r1", "[a1]", when=f"[{expr!r}]")))
+    with pytest.raises(PolicyLoadError, match=r"a\.apl\.yaml.*'r1'.*does not compile"):
+        load_policy_dir(str(tmp_path))
+
+
+def test_compilable_when_loads(tmp_path):
+    write(tmp_path, "a.apl.yaml",
+          doc("a", AGENT + _rule("deny", "r1", "[a1]", when="[\"request.x == 'y'\"]")))
+    assert load_policy_dir(str(tmp_path)).entitlements[0].when == ("request.x == 'y'",)
+

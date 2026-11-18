@@ -155,8 +155,15 @@ A **policy set** is a directory. Loading it MUST follow these rules:
 6. Every principal MUST have a non-empty `owner`.
 7. An entitlement with `expires: task` MUST have a `purpose`.
 8. Every `may_delegate.to` MUST name a principal defined in the set.
-9. A load error rejects the whole set. An engine MUST NOT decide against a
-   partially loaded set.
+9. Every `grant_to` selector of a grant or deny MUST be `*`,
+   `user:<id>`, `group:<name>` or `role:<name>` with a non-empty name, or
+   a principal id defined in the set (§5.2).
+10. Every `${` in a grant or deny `resource` MUST begin a placeholder of
+    the form `${request.<key>}`, where `<key>` matches
+    `[A-Za-z0-9_.-]+` (§6.2).
+11. Every `when` expression of a grant or deny MUST compile (§6.3).
+12. A load error rejects the whole set. An engine MUST NOT decide
+    against a partially loaded set.
 
 An empty set (a directory with no `*.apl.yaml` file, or files defining no
 principals and no entitlements) loads successfully, and every decision
@@ -238,6 +245,8 @@ matches a link as follows:
 A group or role claim that is a single string is treated as a one-item
 list. A claim that is absent or neither a string nor a list matches
 nothing. `group:` and `role:` selectors never match an agent or service.
+In `grant_to`, any other selector (for example `agent:bot`, `group:` or
+an undefined principal id) is a load error (§4.1).
 
 ## 6. Entitlements and denies
 
@@ -307,9 +316,10 @@ deny by attribute belongs in its `when`, which fails closed (§6.3). For
 example, with the deny resource `doc/${request.doc_id}` and the request
 resource `doc/1`, the deny matches when `doc_id` is `1`, `2` or absent.
 
-A placeholder that is not of the exact form `${request.<key>}` (for
-example `${req.x}` or an unclosed `${request.x`) is not a placeholder: its
-characters stay in the pattern literally (§12).
+A `${` that does not begin a placeholder of the exact form
+`${request.<key>}`, with `<key>` matching `[A-Za-z0-9_.-]+` (for example
+`${req.x}`, `${ request.x }` or an unclosed `${request.x`), is a load
+error (§4.1).
 
 ### 6.3 Conditions (`when`)
 
@@ -339,8 +349,9 @@ independent of the intermediaries, which P1(a) needs (§7.5).
 **Evaluation.** A `when` list is a conjunction evaluated **in order**:
 
 1. An absent or empty list is true.
-2. Each expression MUST compile and MUST evaluate to a boolean.
-   Otherwise the result is a condition error.
+2. Each expression MUST compile; an expression that does not compile is
+   a load error (§4.1). Each expression MUST evaluate to a boolean;
+   otherwise the result is a condition error.
 3. Evaluation stops at the first expression that is false, and the list
    is false. Later expressions are not evaluated. So `[false_expr,
    erroring_expr]` is **false**, not an error, while `[erroring_expr,
@@ -823,11 +834,10 @@ are omitted.
   is `user:<email>` when an `email` claim is present, and
   `email_verified` is not checked. Deployments MUST use an IdP that only
   issues verified email addresses.
-- **A malformed `${` placeholder is literal.** A resource placeholder not
-  of the exact form `${request.<key>}` is left in the pattern as literal
-  text, so it matches (practically) nothing. In particular, a deny with
-  such a placeholder never fires. Policy authors MUST use valid
-  `${request.<key>}` placeholders. A load-time check is planned.
+- **A malformed `${` placeholder is a load error.** A resource `${` that
+  does not begin a `${request.<key>}` placeholder rejects the policy set
+  at load (§4.1, §6.2), so a deny can never silently stop firing because
+  of a placeholder typo.
 - **Interpolated non-string values.** The string form of a number or
   boolean interpolated into a grant resource follows the reference
   engine (§6.2).

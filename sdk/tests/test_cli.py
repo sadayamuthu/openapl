@@ -134,3 +134,11 @@ def test_cli_inventory_table(refund_dir):
     r = CliRunner().invoke(main, ["inventory", str(refund_dir)])
     assert r.exit_code == 0
     assert "support-agent" in r.output and "refund-small-orders" in r.output
+
+
+def test_cli_validate_rejects_malformed_deny_placeholder(refund_dir):
+    p = refund_dir / "refund-delegation.apl.yaml"
+    p.write_text(p.read_text().replace('resource: "order/bulk-*"', 'resource: "order/${args.id}"'))
+    r = CliRunner().invoke(main, ["validate", str(refund_dir)])
+    assert r.exit_code == 1
+    assert "no-bulk-refunds" in r.output and "placeholder" in r.output

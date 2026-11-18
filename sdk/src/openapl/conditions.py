@@ -20,6 +20,11 @@ def _program(expr: str):
         raise ConditionError(f"condition does not compile: {expr!r}: {e}") from e
 
 
+def compile_condition(expr: str) -> None:
+    """Compile one expression; raises ConditionError if it does not compile."""
+    _program(expr)
+
+
 def evaluate_conditions(exprs: tuple[str, ...], activation: dict) -> bool:
     if not exprs:
         return True
