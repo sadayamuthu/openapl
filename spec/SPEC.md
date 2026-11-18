@@ -762,7 +762,10 @@ An engine MAY word its reasons differently and still conform, provided
 | `directory-snapshot.yaml` | inactive and active owners |
 | `duration-expiry.yaml` | duration windows, missing `iat`, `iat > now` |
 | `deny-resource-wildcard.yaml` | deny resources in wildcard form: a missing or mismatched attribute cannot bypass a deny |
-| `conditions.yaml` | ordered short-circuit, error absorption, activation shape, no `chain.depth` |
+| `conditions.yaml` | ordered short-circuit, error absorption (`||` and `&&`), activation shape, no `chain.depth` |
+| `agent-origin-allowed.yaml` | `require_human_origin: false` lets an agent or service be the origin |
+| `agent-origin-default.yaml` | the same chain under the default `require_human_origin: true` |
+| `delegation-settings.yaml` | custom `max_depth: 1`; custom `humans.match.groups_claim` |
 | `empty-policy-set.yaml` | `no policies loaded` |
 
 ## 11. Tooling (non-normative)

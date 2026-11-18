@@ -22,3 +22,6 @@ OpenAPL uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   duration expiry; P1 stated as an endpoint bound plus relay
   monotonicity; no `chain.depth` in conditions; `explain` is
   conservative; evidence contains observations only.
+- Conformance expectations: `decision`, `approvers` and `matched` are
+  MUST; reason wording (`reasons`, `reasons_include`) is SHOULD, so an
+  engine may word its reasons differently and still conform.

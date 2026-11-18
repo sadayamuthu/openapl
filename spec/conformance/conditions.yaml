@@ -37,6 +37,12 @@ policies:
           action: a.read
           resource: "doc/*"
           when: ["request.missing || true"]
+        - id: absorbed-error-and
+          grant_to: [bot]
+          action: a.update
+          resource: "doc/*"
+          when: ["request.missing && false"]
+          otherwise: require_approval(role:editor)
         - id: principal-view
           grant_to: [bot]
           action: a.list
@@ -71,6 +77,12 @@ cases:
   - id: missing-or-true-is-true
     request: { action: a.read }
     expect: { decision: ALLOW }
+  - id: missing-and-false-is-false
+    description: "missing && false is false, not an error, so the otherwise makes the link eligible for approval."
+    request: { action: a.update }
+    expect:
+      decision: REQUIRE_APPROVAL
+      approvers: ["role:editor"]
   - id: activation-shape
     description: principal, chain.origin and chain.caller are visible to conditions.
     request: { action: a.list }

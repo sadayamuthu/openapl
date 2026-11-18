@@ -41,8 +41,12 @@ cases:
       reasons_include: ["user:h@acme.com has no grant for a.read on doc/1"]
   - id: no-iat
     request: { iat: null }
-    expect: { decision: DENY }
+    expect:
+      decision: DENY
+      reasons_include: ["user:h@acme.com has no grant for a.read on doc/1"]
   - id: iat-in-future
     description: R8. A token issued after the decision time fails duration expiry.
     request: { iat: 1001, now: 1000 }
-    expect: { decision: DENY }
+    expect:
+      decision: DENY
+      reasons_include: ["user:h@acme.com has no grant for a.read on doc/1"]

@@ -1,0 +1,44 @@
+# spec/conformance/agent-origin-allowed.yaml
+# require_human_origin: false lets an agent be the origin.
+openapl_conformance: '0.1'
+suite: agent-origin-allowed
+policies:
+  - inline: |
+      openapl: '0.1'
+      policy: p
+      version: 1.0.0
+      principals:
+        scheduler:
+          kind: service
+          identity: { oauth_client_id: scheduler }
+          owner: priya@acme.com
+          may_delegate:
+            - to: worker
+              actions: [jobs.run]
+        worker:
+          kind: agent
+          identity: { oauth_client_id: worker }
+          owner: priya@acme.com
+      entitlements:
+        - id: scheduler-runs
+          grant_to: [scheduler]
+          action: jobs.run
+          resource: "job/*"
+        - id: worker-runs
+          grant_to: [worker]
+          action: jobs.run
+          resource: "job/*"
+      delegation:
+        require_human_origin: false
+cases:
+  - id: agent-origin-allows
+    request:
+      chain:
+        - { id: scheduler, kind: service }
+        - { id: worker, kind: agent }
+      action: jobs.run
+      resource: job/1
+      now: 1000
+    expect:
+      decision: ALLOW
+      reasons: []

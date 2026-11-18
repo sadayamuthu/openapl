@@ -54,7 +54,7 @@ openapl decide spec/examples \
   --origin-claims '{"groups": ["support-staff"]}' \
   --action payments.refund --resource order/123 \
   --attr order_id=123 --attr amount=150 --attr account_status=open \
-  --purpose customer-refund --task-id t1
+  --purpose customer-refund --task-id t1 --now 1000
 ```
 
 ```
