@@ -2,7 +2,7 @@
 import pytest
 
 from openapl.approvals import attributes_hash
-from openapl.chain import ChainError, chain_from_claims, chain_from_list, request_from_claims
+from openapl.chain import MAX_ACT_DEPTH, ChainError, chain_from_claims, chain_from_list, request_from_claims
 
 NOW = 1_700_000_000
 
@@ -143,3 +143,16 @@ def test_chain_from_list_requires_user_origin(ps):
         chain_from_list(["support-agent"], ps)
     with pytest.raises(ChainError):
         chain_from_list([], ps)
+
+
+def _nested(n):
+    act = None
+    for _ in range(n):
+        act = {"sub": "refund-agent", **({"act": act} if act else {})}
+    return {"sub": "alice", "act": act}
+
+
+def test_act_depth_boundary(ps):
+    assert len(chain_from_claims(_nested(MAX_ACT_DEPTH), ps)) == MAX_ACT_DEPTH + 1
+    with pytest.raises(ChainError, match="deeper than 32"):
+        chain_from_claims(_nested(MAX_ACT_DEPTH + 1), ps)
