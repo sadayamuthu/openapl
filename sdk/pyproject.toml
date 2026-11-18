@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openapl"
+dynamic = ["version"]
+description = "OpenAPL: an open access-policy language for humans and AI agents"
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6.0", "jsonschema>=4.20", "click>=8.1", "cel-python>=0.4"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov", "hypothesis>=6.100"]
+
+[project.scripts]
+openapl = "openapl.cli:main"
+
+[tool.hatch.version]
+path = "src/openapl/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openapl"]
+include = ["src/openapl/**/*.py", "src/openapl/schemas/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
