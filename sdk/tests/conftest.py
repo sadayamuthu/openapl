@@ -20,3 +20,10 @@ def refund_dir(tmp_path):
 @pytest.fixture
 def ps(refund_dir):
     return load_policy_dir(str(refund_dir))
+
+
+@pytest.fixture
+def authorizer(ps):
+    from openapl.authorizer import Authorizer
+
+    return Authorizer(ps)
