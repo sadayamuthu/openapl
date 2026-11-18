@@ -27,6 +27,16 @@ def _link_view(link: Link) -> dict:
     return {**link.claims, "id": link.principal_id, "kind": link.kind}
 
 
+def _activation_base(request: Request) -> dict:
+    # R10: no chain.depth. Only the origin and caller are visible to conditions,
+    # so a link's grade cannot depend on intermediaries (P1, R9).
+    chain = request.chain
+    return {
+        "request": request.attributes,
+        "chain": {"origin": _link_view(chain[0]), "caller": _link_view(chain[-1])},
+    }
+
+
 def _approver(otherwise: str | None) -> str | None:
     if not otherwise:
         return None
@@ -143,6 +153,11 @@ class Authorizer:
             for a in request.approvals
         )
 
+    def _grade(self, request: Request, link: Link) -> str:
+        """Per-link GRANTED / NEEDS_APPROVAL / NONE, as used by decide (seam for P1 tests)."""
+        base = _activation_base(request)
+        return self._link_grant(link, request, base, attributes_hash(request.attributes))[0]
+
     def _link_grant(self, link: Link, request: Request, base: dict, attrs_hash: str):
         """Return (state, approvers, matched ids, granted ids, reasons) for one link."""
         activation = {**base, "principal": _link_view(link)}
@@ -225,11 +240,7 @@ class Authorizer:
                     f"no delegation edge {prev.principal_id} -> {cur.principal_id} for {request.action}"
                 )
 
-        base = {
-            "request": request.attributes,
-            "chain": {"origin": _link_view(chain[0]), "caller": _link_view(chain[-1]),
-                      "depth": depth},
-        }
+        base = _activation_base(request)
 
         # 5. Denies match on any link.
         deny_ids: list[str] = []

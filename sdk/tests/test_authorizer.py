@@ -400,11 +400,16 @@ def test_approval_hash_reordered_keys_allows(authorizer):
 
 
 def test_p1_literal_counterexample_relay_supplies_missing_edge():
-    # Found by hypothesis (task 6) against the literal design §4.4 P1 wording. With
-    # origin and caller fixed, inserting a0 turns DENY into ALLOW, because the relay
-    # supplies the direct edge user:h -> a1 that is missing. The longer chain meets
-    # every clause of §4.4, so this is the semantics, not an engine bug; P1 holds
-    # when the insertion splits an edge that exists (tests/test_properties.py).
+    """Why the literal P1 ("inserting any intermediary never raises the decision") is false.
+
+    Found by hypothesis (task 6). With origin user:h and caller a1 fixed, [h, a1]
+    is DENY only because the direct edge h -> a1 is missing; inserting a0 gives
+    [h, a0, a1], whose edges h -> a0 and a0 -> a1 exist, so it is ALLOW. The longer
+    chain meets every clause of design §4.4: it is a permitted path, not an engine
+    bug. P1 is therefore claimed as two parts (R9), both property-tested in
+    tests/test_properties.py: the decision is bounded by the origin's and caller's
+    grades, and relaying an existing edge never raises the decision.
+    """
     src = "p.apl.yaml"
     a0 = Principal("a0", "agent", {}, "user:owner",
                    (Edge(("a.read",), who="group:g2"),), (Edge(("a.read",), to="a1"),), src, src)
@@ -418,3 +423,32 @@ def test_p1_literal_counterexample_relay_supplies_missing_edge():
     assert d.decision == "DENY"
     assert d.reasons == ("no delegation edge user:h -> a1 for a.read",)
     assert Authorizer(ps).decide(relayed).decision == "ALLOW"
+
+
+def _depth_ps(*entitlements):
+    src = "p.apl.yaml"
+    a0 = Principal("a0", "agent", {}, "user:owner", (Edge(("a.read",), who="group:g"),), (), src, src)
+    return PolicySet({"a0": a0}, entitlements, 3, True, "groups", "roles", {}, None)
+
+
+def _ent(eid, when, deny):
+    return Entitlement(eid, ("*",), "a.read", "r/1", when, None, "never", None, deny, "p", "p")
+
+
+DEPTH_REQ = Request((Link("user:h", "human", {"groups": ["g"]}), Link("a0", "agent", {})),
+                    "a.read", "r/1", {}, now=1000)
+
+
+def test_chain_depth_is_condition_error_on_grant():
+    # R10: the activation has no chain.depth; depth is expressed only by max_depth.
+    d = Authorizer(_depth_ps(_ent("g", ("chain.depth >= 0",), False))).decide(DEPTH_REQ)
+    assert d.decision == "DENY"
+    assert "condition error in g" in d.reasons
+    assert d.grants == ()
+
+
+def test_chain_depth_is_condition_error_on_deny():
+    ps = _depth_ps(_ent("g", (), False), _ent("d", ("chain.depth > 99",), True))
+    d = Authorizer(ps).decide(DEPTH_REQ)
+    assert d.decision == "DENY"
+    assert d.reasons == ("denied by d (condition error)",)

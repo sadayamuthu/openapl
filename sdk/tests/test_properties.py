@@ -173,12 +173,12 @@ def _decide(ps: PolicySet, request: Request) -> str:
 
 @PROPS
 @given(cases(), st.data())
-def test_p1_attenuation(case, data):
-    # Fixed origin and caller: inserting an agent strictly between them never moves
-    # DENY->ALLOW, DENY->REQUIRE_APPROVAL or REQUIRE_APPROVAL->ALLOW.
-    # Restated (task-6 report): the insertion splits an edge p(i-1)->p(i) that exists
-    # for the action. Without that premise the literal statement is false: a relay
-    # can supply a missing direct edge (test_authorizer.py::
+def test_p1_relay_monotonic(case, data):
+    # P1(b), R9: for a fixed origin and caller, replacing an existing edge
+    # p(i-1)->p(i) with a relay p(i-1)->x->p(i) never moves DENY->ALLOW,
+    # DENY->REQUIRE_APPROVAL or REQUIRE_APPROVAL->ALLOW. The edge must exist: a
+    # relay that supplies a missing edge may raise the decision, which is why the
+    # literal "inserting never raises" is not claimed (test_authorizer.py::
     # test_p1_literal_counterexample_relay_supplies_missing_edge).
     ps, request = case
     chain = request.chain
@@ -212,11 +212,24 @@ def test_p1_attenuation(case, data):
     assert RANK[after] <= RANK[before]
 
 
+GRADE_RANK = {"NONE": 0, "NEEDS_APPROVAL": 1, "GRANTED": 2}
+
+
 @PROPS
 @given(cases())
-def test_p1_bounded_by_origin(case):
+def test_p1_bounded_by_endpoints(case):
+    # P1(a), R9: the decision is never better than the worse of the origin's and
+    # the caller's per-link grades, which do not depend on intermediaries (R10).
     ps, request = case
-    if _decide(ps, request) == "ALLOW":
+    authorizer = Authorizer(ps)
+    chain = request.chain
+    grades = [authorizer._grade(request, link) for link in (chain[0], chain[-1])]
+    endpoints = replace(request, chain=(chain[0], chain[-1]) if len(chain) > 1 else chain)
+    assert grades == [authorizer._grade(endpoints, link) for link in (chain[0], chain[-1])]
+    decision = authorizer.decide(request).decision
+    event(f"{decision} with grades {'/'.join(grades)}")
+    assert RANK[decision] <= min(GRADE_RANK[g] for g in grades)
+    if decision == "ALLOW":  # cross-check the engine's grade with an independent oracle
         assert _origin_granted(ps, request)
 
 
