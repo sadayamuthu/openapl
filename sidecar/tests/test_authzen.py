@@ -328,6 +328,13 @@ def test_bad_content_length_400(serve, gate):
 
 
 def test_transfer_encoding_400(serve, gate):
-    status, _, _ = http(serve(gate), "/access/v1/evaluation", raw=b"{}",
-                        headers={**AUTH, "Transfer-Encoding": "chunked"})
-    assert status == 400
+    # A raw socket avoids a client-side EPIPE race: the server rejects the request
+    # and closes without reading the body.
+    import socket
+    port = int(serve(gate).rsplit(":", 1)[1])
+    with socket.create_connection(("127.0.0.1", port), timeout=5) as s:
+        s.sendall(b"POST /access/v1/evaluation HTTP/1.1\r\nHost: x\r\n"
+                  b"Authorization: Bearer t\r\nContent-Type: application/json\r\n"
+                  b"Transfer-Encoding: chunked\r\n\r\n2\r\n{}\r\n0\r\n\r\n")
+        first = s.recv(64)
+    assert first.startswith(b"HTTP/1.0 400") or first.startswith(b"HTTP/1.1 400")
