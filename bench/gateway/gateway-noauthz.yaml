@@ -1,0 +1,19 @@
+# BENCHMARK ONLY, never a deployment option. Identical to demo/agentgateway/gateway.yaml minus extAuthz,
+# so bench/gateway_latency.py can isolate the cost of the OpenAPL ext_authz hop (jwtAuth stays strict).
+mcp:
+  port: 3000
+  prefixMode: always
+  policies:
+    jwtAuth:
+      mode: strict
+      issuer: https://issuer.demo.openapl.local
+      audiences: [agentgateway-demo]
+      jwks:
+        file: /config/out/jwks.json
+  targets:
+  - name: payments
+    mcp:
+      host: http://payments-mcp:3001/mcp
+  - name: crm
+    mcp:
+      host: http://crm-mcp:3002/mcp
