@@ -182,7 +182,7 @@ HTTP, the request body, the `jwt_payload` claims with `act` intact, the
 [integration guide](../docs/integrations/agentgateway.md) and
 [`demo/agentgateway/VERIFIED.md`](../demo/agentgateway/VERIFIED.md).
 
-One difference: agentgateway v1.7.0 rejects a JSON-RPC batch with 400 after
-ext_authz has seen it, so the sidecar's batch handling is not exercised
-through that gateway version (the sidecar still denies the whole array if any
-call in it is denied).
+One difference: agentgateway v1.7.0 never forwards a JSON-RPC batch to the
+MCP server. It answers 400 after ext_authz has seen the array. The sidecar
+still decides the array first and denies it (403) if any call in it is
+denied, which the demo's `batch` scenario exercises.

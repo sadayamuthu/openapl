@@ -42,6 +42,7 @@ A runnable version of this guide is in [`demo/agentgateway`](../../demo/agentgat
   a nested `act` claim (outermost `act` is the current caller). Each `act.sub`
   must equal the identity value used in the policy.
 - An OpenAPL policy directory and, optionally, a bindings file.
+- Python 3.11 with the packages in `demo/agentgateway/requirements.txt` (and the SDK, `pip install ./sdk`), or the `sidecar/.venv`, for the demo issuer and the Verify commands.
 - The sidecar image. It is not published; build it from the repository root:
 
 ```bash
@@ -160,6 +161,8 @@ What each part does:
 ### 4. Start it
 
 ```bash
+rm -rf demo/agentgateway/out && mkdir demo/agentgateway/out
+chmod 0777 demo/agentgateway/out    # the sidecar runs as uid 10001 and must write decisions.jsonl here
 python demo/agentgateway/issuer.py keys demo/agentgateway/out   # demo issuer; use your IdP in production
 docker compose -f demo/agentgateway/compose.yaml up -d --build --wait
 ```
@@ -201,7 +204,7 @@ content-type: application/json
 {"decision": "DENY", "reasons": ["no delegation edge support-agent -> refund-agent for payments.void", ...], "approvers": [], "decision_id": "<id>", "decision_ids": ["<id>"]}
 ```
 
-The decision is also the last line of `out/decisions.jsonl`. The sidecar
+The decision is also a new line in `out/decisions.jsonl`. The sidecar
 ports are not reachable from the host (only `127.0.0.1:3000` is published).
 To run all 13 scenarios instead, use `./demo/agentgateway/run.sh`.
 
@@ -232,6 +235,7 @@ ride along in a batch. See [VERIFIED.md](../../demo/agentgateway/VERIFIED.md).
 ### Cleanup
 
 ```bash
+cd ..   # back to the repository root if you ran Verify from demo/agentgateway
 docker compose -f demo/agentgateway/compose.yaml down -v
 ```
 
