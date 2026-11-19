@@ -12,4 +12,20 @@ rego:
   grade: native
   why: "`every` over input.chain checks each consecutive edge against the may_delegate table."
   lines: ["rego/policy.rego:28-36", "rego/policy.rego:53-68"]
-# xacml, gapl: written analyses, added in Task 3.
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: workaround
+  why: >-
+    Bags are unordered (X1 §7.3.2) and there is no iteration over positions, so the PEP flattens
+    the ordered chain into first-agent and a bag of "prev>cur" hops; the policy then tests
+    string-subset against the literal edge pairs per action.
+  sources: ["X1 §7.3.2", "X1 §10.2.8", "X1 A.3.11"]
+  analysis: "bench/analysis/xacml.md#attenuation-3hop"
+gapl:
+  grade: workaround
+  why: >-
+    The chain reaches GAPL only as an unordered Set (G4, G7; the gateway's agent_chain is a Set,
+    G10) and no documented operator iterates a set (G5), so first_agent, hops and depth are
+    precomputed.
+  sources: ["G4", "G5", "G7", "G10"]
+  analysis: "bench/analysis/gapl.md#attenuation-3hop"

@@ -147,3 +147,33 @@ def test_cedar_counterfactual_without_precomputed_fields():
             assert all(r["ok"] for r in mine), (s.id, [r for r in mine if not r["ok"]])
         else:
             assert not all(r["ok"] for r in mine), s.id
+
+
+# --- Task 3: every scenario carries all five grades ----------------------------------------
+
+WRITTEN = {"xacml": GRADES, "gapl": GRADES | {"unknown"}}
+ANALYSIS = BENCH / "analysis"
+
+
+@pytest.mark.parametrize("scenario", load_scenarios(), ids=lambda s: s.id)
+def test_verdicts_complete(scenario):
+    """openapl, cedar, rego, xacml and gapl each have an allowed grade and a non-empty why;
+    the written analyses cite sources.md entries and have a section for the scenario."""
+    verdict = yaml.safe_load((Path(scenario.path) / "verdict.yaml").read_text())
+    assert set(verdict) == {"openapl", *ENGINES, *WRITTEN}, scenario.id
+    assert verdict["openapl"] == "native"
+    for engine in ENGINES:
+        assert verdict[engine]["grade"] in GRADES and verdict[engine]["why"].strip()
+    sources = (ANALYSIS / "sources.md").read_text()
+    for engine, allowed in WRITTEN.items():
+        v = verdict[engine]
+        assert v["grade"] in allowed and v["why"].strip(), (scenario.id, engine)
+        if v["grade"] == "unknown":
+            assert "(not documented)" in v["why"], (scenario.id, engine)
+        assert v["sources"], (scenario.id, engine)
+        for src in v["sources"]:
+            entry = src.split()[0]
+            assert re.search(rf"^(\*\*{entry}\.\*\*|\| {entry} \|)", sources, flags=re.M), src
+        doc, anchor = v["analysis"].split("#")
+        text = (BENCH.parent / doc).read_text()
+        assert f"### {scenario.id} — {v['grade']}" in text, (scenario.id, engine)

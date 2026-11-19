@@ -11,4 +11,20 @@ rego:
   grade: native
   why: "granted(origin) and granted(caller) are both required next to the acts_for edge rule."
   lines: ["rego/policy.rego:39-67"]
-# xacml, gapl: written analyses, added in Task 3.
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: native
+  why: >-
+    Origin and caller are placed in their own categories (X1 §5.44); the rule requires
+    string-is-in("finance", origin group), the caller id, the staff edge and
+    string-bag-size(agent-id) = 1. Nothing is computed.
+  sources: ["X1 §5.44", "X1 A.3.10"]
+  analysis: "bench/analysis/xacml.md#confused-deputy"
+gapl:
+  grade: native
+  why: >-
+    One permit on the caller with when-conditions: origin groups contains finance (P2) and staff
+    (edge), resource path like dataset/*, and context.agents == ["export-agent"] (set equality).
+    Nothing is precomputed.
+  sources: ["G3", "G4", "G5"]
+  analysis: "bench/analysis/gapl.md#confused-deputy"

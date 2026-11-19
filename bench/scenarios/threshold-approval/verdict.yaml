@@ -15,4 +15,22 @@ rego:
     grade uses else, and data.openapl.decision returns REQUIRE_APPROVAL as a value; Rego
     decisions are arbitrary documents, so no outside mapping is needed.
   lines: ["rego/policy.rego:47-96", "rego/policy.rego:111-124"]
-# xacml, gapl: written analyses, added in Task 3.
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: native
+  why: >-
+    amount <= 200 is a guarded integer comparison; over the limit a Deny rule carries a
+    require-approval obligation (FulfillOn=Deny), which the PDP returns as part of its decision
+    (X1 §5.39, §7.18); a missing amount gives a plain Deny without it. Native only under the
+    reading that a standard obligation counts as the third outcome (see xacml.md Concerns).
+  sources: ["X1 §5.39", "X1 §7.2", "X1 §7.18", "X1 A.3.5"]
+  analysis: "bench/analysis/xacml.md#threshold-approval"
+gapl:
+  grade: workaround
+  why: >-
+    The threshold is a guarded Long comparison and a missing amount matches no permit (G5, G8),
+    but GAPL decides only Permit/Forbid/Not applicable (G8): REQUIRE_APPROVAL is an @id
+    convention mapped outside the engine (G3). Human-in-the-Loop rules (G12) are a separate
+    Agent Management mechanism, not GAPL.
+  sources: ["G3", "G5", "G8", "G12"]
+  analysis: "bench/analysis/gapl.md#threshold-approval"

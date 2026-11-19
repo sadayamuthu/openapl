@@ -11,4 +11,20 @@ rego:
   grade: native
   why: "`some link in chain` with `not link.id in principals`."
   lines: ["rego/policy.rego:61-75"]
-# xacml, gapl: written analyses, added in Task 3.
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: workaround
+  why: >-
+    The unknown-principal check is native: string-subset(agent-id, string-bag(known ids)) (X1
+    A.3.11). The three- and four-link cases' edges need PEP-computed first-agent and hops (X1
+    §7.3.2), as in Cedar.
+  sources: ["X1 A.3.11", "X1 §7.3.2"]
+  analysis: "bench/analysis/xacml.md#unknown-principal"
+gapl:
+  grade: workaround
+  why: >-
+    The known-principal check is native
+    (["known-agent","known-relay"].containsAll(context.agents), G5), but the three- and
+    four-link edges need precomputed first_agent and hops (Set, G4, G7), as in Cedar.
+  sources: ["G4", "G5", "G7"]
+  analysis: "bench/analysis/gapl.md#unknown-principal"

@@ -11,4 +11,20 @@ rego:
   grade: native
   why: "The acts_for edge rule requires input.action == tickets.read; grants use glob tickets.*."
   lines: ["rego/policy.rego:39-58"]
-# xacml, gapl: written analyses, added in Task 3.
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: native
+  why: >-
+    The edge rule requires action-id = tickets.read with string-is-in("support", origin group);
+    the grants use string-starts-with("tickets.", action-id). An injected tickets.delete fails
+    only the edge. Nothing is computed.
+  sources: ["X1 A.3.9", "X1 A.3.10"]
+  analysis: "bench/analysis/xacml.md#prompt-injected-escalation"
+gapl:
+  grade: native
+  why: >-
+    The agent's grant enumerates the tickets actions (action list or schema action group, G3,
+    G9); the edge condition requires action == Action::"tickets.read" and the support group, so
+    an injected delete fails only the edge.
+  sources: ["G3", "G5", "G9"]
+  analysis: "bench/analysis/gapl.md#prompt-injected-escalation"

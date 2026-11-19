@@ -16,4 +16,20 @@ rego:
     ordered when list are rules. Caveat: sprintf %v formats a non-string attribute the Go
     way, not as Python str (cases use a string order_id).
   lines: ["rego/policy.rego:49-80", "rego/policy.rego:114-125"]
-# xacml, gapl: written analyses, added in Task 3.
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: workaround
+  why: >-
+    Interpolation is native (string-concatenate is M, X1 A.3.9, unlike Cedar), as are the denies
+    and the approval obligation; but direct-chain-has-no-edge vs relay-supplies-the-edge differ
+    only in chain order, which the PEP must flatten into first-agent and hops (X1 §7.3.2).
+  sources: ["X1 A.3.9", "X1 §7.3.2"]
+  analysis: "bench/analysis/xacml.md#relay-adds-edge"
+gapl:
+  grade: workaround
+  why: >-
+    No string concatenation is documented (G5), so order/${request.order_id} is precomputed; the
+    direct vs relayed chain needs precomputed first_agent and hops (Set, G4, G7); otherwise:
+    require_approval uses the @id convention (G3).
+  sources: ["G3", "G4", "G5", "G7"]
+  analysis: "bench/analysis/gapl.md#relay-adds-edge"

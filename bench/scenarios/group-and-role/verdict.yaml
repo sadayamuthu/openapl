@@ -11,4 +11,20 @@ rego:
   grade: native
   why: "claim_values reads a list or a single string (is_array / is_string) for groups and roles."
   lines: ["rego/policy.rego:15-22", "rego/policy.rego:38-62"]
-# xacml, gapl: written analyses, added in Task 3.
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: native
+  why: >-
+    Groups and roles are multi-valued origin attributes; a single-string claim is one
+    AttributeValue, a bag of one (X1 §7.3.3). The edge is string-is-in("sre", group) and the
+    grant string-is-in("oncall", role).
+  sources: ["X1 §7.3.3", "X1 A.3.10"]
+  analysis: "bench/analysis/xacml.md#group-and-role"
+gapl:
+  grade: native
+  why: >-
+    `groups == "sre" || groups.contains("sre")` handles a single-string or list claim:
+    cross-type == is false, not an error, and || short-circuits (G5); a non-matching string
+    errors and skips the permit (G8), giving DENY. Same for the oncall role.
+  sources: ["G5", "G7", "G8"]
+  analysis: "bench/analysis/gapl.md#group-and-role"

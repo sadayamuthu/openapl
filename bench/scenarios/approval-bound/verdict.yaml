@@ -17,4 +17,22 @@ rego:
     decision document is the three-valued string. Caveat: json.marshal HTML-escapes <, > and
     &, which OpenAPL's canonical JSON does not; no case value contains them.
   lines: ["rego/policy.rego:73-96", "rego/policy.rego:112-125"]
-# xacml, gapl: written analyses, added in Task 3.
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: workaround
+  why: >-
+    XACML has no hash function (X1 §10.2.8), so the PEP computes the SHA-256 of the canonical
+    arguments; a list of approval records cannot be passed (no bags of records, X1 §7.3.2; one
+    <Attributes> per category, X1 §5.42), so the PEP splits or preselects items. exp >= now
+    (integer compare) and REQUIRE_APPROVAL (Deny + obligation, X1 §7.18) are native.
+  sources: ["X1 §5.42", "X1 §7.3.2", "X1 §7.18", "X1 §10.2.8"]
+  analysis: "bench/analysis/xacml.md#approval-bound"
+gapl:
+  grade: workaround
+  why: >-
+    No hash function is documented (G5, G6), so attributes_hash is precomputed; approvals arrive
+    as a Set of records and the set methods only test membership (G5, G7), so each item's
+    `expired` flag is precomputed for a whole-record contains; REQUIRE_APPROVAL is an @id naming
+    convention mapped outside GAPL (G3, G8).
+  sources: ["G3", "G5", "G6", "G7", "G8"]
+  analysis: "bench/analysis/gapl.md#approval-bound"
