@@ -286,3 +286,48 @@ def test_context_chain_ignored_outside_dev_mode(serve, gate):
     ev["context"]["chain"] = ROGUE
     _, _, body = post(serve(gate), ev)
     assert body["decision"] is True  # chain ignored; claims-derived chain used
+
+
+def test_nan_rejected_400(serve, gate):
+    raw = (b'{"subject":{"type":"user","id":"a"},"action":{"name":"x"},'
+           b'"resource":{"type":"o","id":"1","properties":{"amount":NaN}}}')
+    assert http(serve(gate), "/access/v1/evaluation", raw=raw, headers=AUTH)[0] == 400
+    assert http(serve(gate), "/access/v1/evaluation", raw=raw.replace(b"NaN", b"-Infinity"),
+                headers=AUTH)[0] == 400
+
+
+def test_subject_checked_against_email_first(serve, gate):
+    ev = evaluation({"email": "mallory@x", "sub": "alice@acme.com",
+                     "openapl_purpose": "customer-refund", "openapl_task_id": "t1", "iat": 900})
+    assert post(serve(gate), ev)[0] == 400
+
+
+def test_sub_only_claims_matching_evaluated(serve, gate):
+    ev = evaluation({"sub": "alice@acme.com"})
+    status, _, body = post(serve(gate), ev)
+    assert status == 200 and "openapl" in body["context"]
+
+
+def test_slow_client_disconnected(serve, gate, monkeypatch):
+    import socket
+
+    import openapl_sidecar.authzen as az
+    monkeypatch.setattr(az, "REQUEST_TIMEOUT", 0.5)
+    url = serve(gate)
+    host, port = url[len("http://"):].split(":")
+    s = socket.create_connection((host, int(port)), timeout=5)
+    s.sendall(b"POST /access/v1/evaluation HTTP/1.1\r\nContent-Le")
+    assert s.recv(10) == b""  # server closed after timeout
+    s.close()
+
+
+def test_bad_content_length_400(serve, gate):
+    status, _, _ = http(serve(gate), "/access/v1/evaluation", raw=b"{}",
+                        headers={**AUTH, "Content-Length": "+2"})
+    assert status == 400
+
+
+def test_transfer_encoding_400(serve, gate):
+    status, _, _ = http(serve(gate), "/access/v1/evaluation", raw=b"{}",
+                        headers={**AUTH, "Transfer-Encoding": "chunked"})
+    assert status == 400

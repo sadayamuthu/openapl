@@ -8,6 +8,7 @@ from openapl_sidecar.gate import Gate
 
 MAX_BODY = 1024 * 1024
 MAX_BATCH = 100
+REQUEST_TIMEOUT = 10
 SEMANTICS = ("execute_all", "deny_on_first_deny", "permit_on_first_permit")
 EVALUATION_PATH = "/access/v1/evaluation"
 EVALUATIONS_PATH = "/access/v1/evaluations"
@@ -43,6 +44,10 @@ def _openapl_context(d) -> dict:
             "reasons": list(d.reasons), "decision_id": d.decision_id}
 
 
+def _reject_constant(name: str):
+    raise ValueError(f"invalid JSON constant {name}")
+
+
 def _evaluate(gate: Gate, ev: dict) -> dict:
     """Map one AuthZEN evaluation, decide, and return the response object.
 
@@ -66,8 +71,8 @@ def _evaluate(gate: Gate, ev: dict) -> dict:
     attributes = {**props, **extra}
     if "claims" in ctx and ctx["claims"] is not None:
         claims = _obj(ctx["claims"], "context.claims")
-        given = [claims[k] for k in ("email", "sub") if k in claims]
-        if given and sid not in given:
+        ident = claims.get("email") or claims.get("sub")  # identity the SDK decides on
+        if ident and ident != sid:
             raise _bad("subject.id does not match claims")
     else:
         claims = {"sub": sid}
@@ -136,12 +141,15 @@ def make_authzen_server(gate: Gate, settings: Settings,
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
+        timeout = REQUEST_TIMEOUT  # seconds; slow clients cannot hold a thread forever
 
         def log_message(self, format, *args):
             pass
 
         def _send(self, status: int, body, extra: dict | None = None):
             data = json.dumps(body).encode()
+            if status >= 400:
+                self.close_connection = True
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(data)))
@@ -184,24 +192,30 @@ def make_authzen_server(gate: Gate, settings: Settings,
             if self.path not in (EVALUATION_PATH, EVALUATIONS_PATH):
                 self._send(404, {"error": "not found"})
                 return
+            if self.headers.get("Transfer-Encoding") is not None:
+                self.close_connection = True
+                raise _bad("Transfer-Encoding is not supported")
             if not self._authorized():
                 self._send(401, {"error": "unauthorized"}, {"WWW-Authenticate": "Bearer"})
                 return
             if not self.headers.get("Content-Type", "").startswith("application/json"):
                 raise _bad("Content-Type must be application/json")
-            try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                raise _bad("invalid Content-Length") from None
-            if length < 0:
+            raw_length = self.headers.get("Content-Length", "0").strip()
+            if not (raw_length.isascii() and raw_length.isdigit()):
                 raise _bad("invalid Content-Length")
+            length = int(raw_length)
             if length > MAX_BODY:
                 self.close_connection = True
                 if length <= 8 * MAX_BODY:  # drain so the client can read the 413
-                    self.rfile.read(length)
+                    left = length
+                    while left > 0:
+                        chunk = self.rfile.read(min(65536, left))
+                        if not chunk:
+                            break
+                        left -= len(chunk)
                 raise RequestError(413, "request body too large")
             try:
-                body = json.loads(self.rfile.read(length))
+                body = json.loads(self.rfile.read(length), parse_constant=_reject_constant)
             except ValueError:
                 raise _bad("invalid JSON") from None
             body = _obj(body, "request body")
