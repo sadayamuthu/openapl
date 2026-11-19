@@ -174,8 +174,15 @@ must see every MCP POST.
   and every dev-mode request is marked as such. Never use it outside local
   development. See the OpenAPL design document for the rationale.
 
-## Not yet verified against a running agentgateway
+## Verified against agentgateway
 
-Per-message ext_authz on MCP streamable HTTP, and JSON-RPC batches. The
-integration demo (plan 2b) checks these, along with the `maxRequestBytes`
-needed for a `tools/call` and that `act` reaches `jwt_payload` intact.
+Checked against agentgateway v1.7.0: per-message ext_authz on MCP streamable
+HTTP, the request body, the `jwt_payload` claims with `act` intact, the
+`maxRequestBytes` limit and the no-token case. See the
+[integration guide](../docs/integrations/agentgateway.md) and
+[`demo/agentgateway/VERIFIED.md`](../demo/agentgateway/VERIFIED.md).
+
+One difference: agentgateway v1.7.0 rejects a JSON-RPC batch with 400 after
+ext_authz has seen it, so the sidecar's batch handling is not exercised
+through that gateway version (the sidecar still denies the whole array if any
+call in it is denied).
