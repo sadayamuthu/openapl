@@ -80,18 +80,29 @@ tools:
   (unbound placeholder), as do tool arguments containing non-finite numbers.
 - agentgateway names multiplexed tools `<target>_<tool>` (split on the first
   `_`), so target names must not contain `_`.
-- MCP methods other than `tools/call` are denied unless listed in
-  `passthrough_methods` (default `initialize`, `ping`, `tools/list`).
-  `notifications/*` and JSON-RPC responses are denied. A JSON-RPC batch is
-  allowed only if every message is allowed; an empty or truncated body
-  denies.
+- On an MCP `POST`, `tools/call` is evaluated against the policy. The
+  passthrough methods (default `initialize`, `ping`, `tools/list`),
+  `notifications/*` and JSON-RPC responses pass through without a decision.
+  Any other method (for example `resources/read` or `prompts/get`) is
+  denied; extend the passthrough list with `passthrough_methods` in the
+  bindings file.
+- A JSON-RPC batch is allowed only if every `tools/call` in it is allowed
+  (each is decided and logged separately); one denied call denies the whole
+  request. A batch of only passthrough messages is allowed. An empty batch,
+  a non-JSON or truncated body, or a malformed message denies.
+- HTTP `GET` (SSE) and `DELETE` on the MCP endpoint are allowed without a
+  decision. Any HTTP method other than `POST`, `GET` and `DELETE` is denied.
 
 ## ext_authz response contract
 
-- ALLOW: gRPC `OK` with an `OkResponse`.
-- DENY and REQUIRE_APPROVAL: HTTP 403 `DeniedResponse` with a JSON body and
-  the headers `x-openapl-decision`, `x-openapl-decision-id` and
-  `content-type: application/json`.
+- ALLOW (including pass-through requests): gRPC status `OK` with an empty
+  `OkHttpResponse` and dynamic metadata `openapl: {decision, decision_ids}`.
+- DENY and REQUIRE_APPROVAL: gRPC status `PERMISSION_DENIED` with an HTTP
+  403 `DeniedHttpResponse`. The JSON body has `decision`, `reasons`,
+  `approvers`, `decision_id` (the first) and `decision_ids`; the headers
+  are `x-openapl-decision`, `x-openapl-decision-id` and
+  `content-type: application/json`. If a batch mixes DENY and
+  REQUIRE_APPROVAL, DENY wins.
 - Anything unexpected is a 403 deny.
 
 Verified claims are read from the check request's filter metadata
