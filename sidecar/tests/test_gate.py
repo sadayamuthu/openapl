@@ -1,5 +1,6 @@
 # sidecar/tests/test_gate.py
 import json
+import logging
 
 from openapl.decision_log import read_log
 
@@ -139,3 +140,12 @@ def test_log_failure_denies(gate_factory, alice_claims, tmp_path):
     d.mkdir()
     r = gate_factory(d).check_mcp("POST", call(**OPEN), alice_claims)
     assert r.decision == "DENY" and "decision log write failed" in r.reasons
+
+
+def test_internal_error_is_logged(gate, alice_claims, caplog):
+    def boom(req):
+        raise RuntimeError("x")
+    gate.authorizer.decide = boom
+    with caplog.at_level(logging.ERROR, logger="openapl_sidecar"):
+        gate.check_mcp("POST", call(**OPEN), alice_claims)
+    assert any(r.name == "openapl_sidecar" and r.exc_info for r in caplog.records)

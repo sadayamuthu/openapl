@@ -91,3 +91,22 @@ def test_serve_and_sigterm(refund_dir, bindings_file):
             p.kill()
         p.wait()
         p.stderr.close()
+
+
+def test_exit_2_when_extauthz_port_in_use(monkeypatch, refund_dir, capsys):
+    with socket.socket() as held:
+        held.bind(("127.0.0.1", 0))
+        held.listen()
+        env(monkeypatch, OPENAPL_POLICY_DIR=str(refund_dir), OPENAPL_PDP_TOKEN="t",
+            OPENAPL_BIND_HOST="127.0.0.1", OPENAPL_AUTHZEN_PORT=str(free_port()),
+            OPENAPL_EXTAUTHZ_PORT=str(held.getsockname()[1]))
+        assert main(["serve"]) == 2
+    assert capsys.readouterr().err.startswith("openapl-sidecar: ")
+
+
+def test_exit_2_on_unwritable_decision_log(monkeypatch, refund_dir, tmp_path, capsys):
+    path = tmp_path / "no-such-dir" / "log.jsonl"
+    env(monkeypatch, OPENAPL_POLICY_DIR=str(refund_dir), OPENAPL_PDP_TOKEN="t",
+        OPENAPL_DECISION_LOG=str(path))
+    assert main(["serve"]) == 2
+    assert f"cannot write decision log {path}" in capsys.readouterr().err

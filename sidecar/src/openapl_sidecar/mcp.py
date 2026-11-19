@@ -1,6 +1,7 @@
 # sidecar/src/openapl_sidecar/mcp.py
-import json
 from dataclasses import dataclass
+
+from openapl_sidecar.jsonstrict import loads_strict
 
 
 class McpParseError(ValueError):
@@ -15,7 +16,7 @@ class McpCall:
 
 def tool_calls(body: bytes, passthrough: frozenset[str]) -> tuple[McpCall, ...]:
     try:
-        doc = json.loads(body.decode("utf-8"))
+        doc = loads_strict(body.decode("utf-8"))
     except (UnicodeDecodeError, ValueError) as e:
         raise McpParseError(f"body is not valid UTF-8 JSON: {e}") from None
     except RecursionError:

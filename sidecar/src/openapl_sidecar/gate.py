@@ -1,5 +1,6 @@
 # sidecar/src/openapl_sidecar/gate.py
 import dataclasses
+import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -11,6 +12,8 @@ from openapl.model import Decision
 
 from openapl_sidecar.bindings import BindingError, Bindings, map_call
 from openapl_sidecar.mcp import McpParseError, tool_calls
+
+log = logging.getLogger("openapl_sidecar")
 
 
 @dataclass(frozen=True)
@@ -61,6 +64,7 @@ class Gate:
         try:
             return self._check_mcp(http_method, body, claims, dev_chain)
         except Exception:
+            log.exception("internal error in check_mcp")
             return _deny("internal error")
 
     def _check_mcp(self, http_method: str, body: bytes, claims: dict | None,

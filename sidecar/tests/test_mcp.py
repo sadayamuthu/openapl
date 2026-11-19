@@ -47,3 +47,17 @@ def test_mixed_batch_returns_only_calls():
 def test_parse_errors(body):
     with pytest.raises(McpParseError):
         tool_calls(body, PASS)
+
+
+def test_duplicate_method_rejected():
+    body = (b'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"x"},'
+            b'"method":"ping"}')
+    with pytest.raises(McpParseError, match="duplicate"):
+        tool_calls(body, PASS)
+
+
+def test_duplicate_key_inside_arguments_rejected():
+    body = (b'{"jsonrpc":"2.0","id":1,"method":"tools/call",'
+            b'"params":{"name":"x","arguments":{"a":1,"a":2}}}')
+    with pytest.raises(McpParseError, match="duplicate"):
+        tool_calls(body, PASS)

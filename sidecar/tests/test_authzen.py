@@ -1,6 +1,7 @@
 # sidecar/tests/test_authzen.py
 import dataclasses
 import json
+import logging
 import threading
 import urllib.error
 import urllib.request
@@ -338,3 +339,45 @@ def test_transfer_encoding_400(serve, gate):
                   b"Transfer-Encoding: chunked\r\n\r\n2\r\n{}\r\n0\r\n\r\n")
         first = s.recv(64)
     assert first.startswith(b"HTTP/1.0 400") or first.startswith(b"HTTP/1.1 400")
+
+
+def _raw_eval(claims, **over):
+    return json.dumps({**evaluation(claims), **over})
+
+
+@pytest.mark.parametrize("big", ["1e999", "-1e999"])
+@pytest.mark.parametrize("where", ["properties", "attributes", "claims"])
+def test_overflowing_number_400(serve, gate, alice_claims, big, where):
+    ev = evaluation(alice_claims)
+    text = json.dumps(ev)
+    if where == "properties":
+        text = text.replace('"amount": 150', f'"amount": {big}')
+    elif where == "attributes":
+        text = text.replace('"claims"', f'"attributes": {{"amount2": {big}}}, "claims"')
+    else:
+        text = text.replace('"claims": {', f'"claims": {{"x": {big}, ')
+    assert big in text
+    status, _, _ = http(serve(gate), "/access/v1/evaluation", raw=text.encode(), headers=AUTH)
+    assert status == 400
+
+
+def test_duplicate_key_in_properties_400(serve, gate, alice_claims):
+    text = json.dumps(evaluation(alice_claims)).replace(
+        '"amount": 150', '"amount": 150, "amount": 5')
+    status, _, _ = http(serve(gate), "/access/v1/evaluation", raw=text.encode(), headers=AUTH)
+    assert status == 400
+
+
+def test_duplicate_top_level_key_400(serve, gate, alice_claims):
+    text = json.dumps(evaluation(alice_claims))[:-1] + ', "action": {"name": "x"}}'
+    status, _, _ = http(serve(gate), "/access/v1/evaluation", raw=text.encode(), headers=AUTH)
+    assert status == 400
+
+
+def test_authzen_internal_error_is_logged(serve, gate, alice_claims, caplog):
+    def boom(*a, **k):
+        raise RuntimeError("x")
+    gate.decide = boom
+    with caplog.at_level(logging.ERROR, logger="openapl_sidecar"):
+        post(serve(gate), evaluation(alice_claims))
+    assert any(r.name == "openapl_sidecar" and r.exc_info for r in caplog.records)

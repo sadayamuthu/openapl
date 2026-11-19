@@ -1,10 +1,14 @@
 # sidecar/src/openapl_sidecar/authzen.py
 import hmac
 import json
+import logging
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from openapl_sidecar.config import Settings
 from openapl_sidecar.gate import Gate
+from openapl_sidecar.jsonstrict import loads_strict
+
+log = logging.getLogger("openapl_sidecar")
 
 MAX_BODY = 1024 * 1024
 MAX_BATCH = 100
@@ -42,10 +46,6 @@ def _nonempty(obj: dict, key: str, name: str) -> str:
 def _openapl_context(d) -> dict:
     return {"decision": d.decision, "approvers": list(d.approvers),
             "reasons": list(d.reasons), "decision_id": d.decision_id}
-
-
-def _reject_constant(name: str):
-    raise ValueError(f"invalid JSON constant {name}")
 
 
 def _evaluate(gate: Gate, ev: dict) -> dict:
@@ -101,6 +101,7 @@ def _single(gate: Gate, ev: dict) -> dict:
     except RequestError:
         raise
     except Exception:
+        log.exception("authzen evaluation failed")
         return _internal_error_single()
 
 
@@ -126,6 +127,7 @@ def _batch(gate: Gate, body: dict) -> dict:
             except RequestError as e:
                 result = _item_error(e.status, e.message)
             except Exception:
+                log.exception("authzen evaluation failed")
                 result = _item_error(500, "internal error")
         out.append(result)
         if (semantic == "deny_on_first_deny" and result["decision"] is False) or (
@@ -185,6 +187,7 @@ def make_authzen_server(gate: Gate, settings: Settings,
             except RequestError as e:
                 self._send(e.status, {"error": e.message})
             except Exception:
+                log.exception("authzen request failed")
                 self.close_connection = True
                 self._send(500, {"error": "internal error"})
 
@@ -215,7 +218,7 @@ def make_authzen_server(gate: Gate, settings: Settings,
                         left -= len(chunk)
                 raise RequestError(413, "request body too large")
             try:
-                body = json.loads(self.rfile.read(length), parse_constant=_reject_constant)
+                body = loads_strict(self.rfile.read(length))
             except ValueError:
                 raise _bad("invalid JSON") from None
             body = _obj(body, "request body")

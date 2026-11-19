@@ -1,5 +1,6 @@
 # sidecar/src/openapl_sidecar/server.py
 import argparse
+import logging
 import os
 import signal
 import sys
@@ -17,6 +18,8 @@ from .gate import Gate
 
 
 def _serve() -> int:
+    logging.basicConfig(level=logging.WARNING, stream=sys.stderr,
+                        format="%(asctime)s %(name)s %(levelname)s %(message)s")
     try:
         settings = settings_from_env(os.environ)
         if not os.path.isdir(settings.policy_dir):
@@ -24,6 +27,12 @@ def _serve() -> int:
         authorizer = Authorizer.from_dir(settings.policy_dir)
         bindings = load_bindings(settings.bindings_path)
         log = DecisionLog(settings.decision_log) if settings.decision_log else None
+        if settings.decision_log:
+            try:
+                with open(settings.decision_log, "a", encoding="utf-8"):
+                    pass
+            except OSError as e:
+                raise ConfigError(f"cannot write decision log {settings.decision_log}: {e}") from None
     except (ConfigError, PolicyLoadError, BindingError) as e:
         print(f"openapl-sidecar: {e}", file=sys.stderr)
         return 2
@@ -33,10 +42,13 @@ def _serve() -> int:
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
 
+    http_server = None
     try:
         http_server = make_authzen_server(gate, settings)
         grpc_server, grpc_port = make_extauthz_server(gate, settings)
-    except OSError as e:
+    except (OSError, RuntimeError) as e:
+        if http_server is not None:
+            http_server.server_close()
         print(f"openapl-sidecar: cannot bind listener: {e}", file=sys.stderr)
         return 2
     if grpc_port == 0:

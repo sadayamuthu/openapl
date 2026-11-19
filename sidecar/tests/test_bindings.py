@@ -156,9 +156,9 @@ def test_mixed_template_is_string(tmp_path):
     assert map_call(b, "t", {"n": 5})[2] == {"id": "o-5"}
 
 
-def test_action_resource_always_string(tmp_path):
-    b = make(tmp_path, 'version: 1\ntools:\n  - {tool: t, action: "${args.n}", resource: "${args.n}"}\n')
-    assert map_call(b, "t", {"n": 5})[:2] == ("5", "5")
+def test_resource_always_string(tmp_path):
+    b = make(tmp_path, 'version: 1\ntools:\n  - {tool: t, action: act, resource: "${args.n}"}\n')
+    assert map_call(b, "t", {"n": 5})[:2] == ("act", "5")
 
 
 def test_attribute_non_string_template_rejected(tmp_path):
@@ -189,3 +189,18 @@ def test_empty_tool_name_rejected(tmp_path):
 def test_version_must_be_int_one(tmp_path, v):
     with pytest.raises(BindingError, match="version"):
         make(tmp_path, f"version: {v}\n")
+
+
+@pytest.mark.parametrize("line", ['action: "pay.${args.verb}"', 'default_action: "${args.x}"'])
+def test_args_placeholder_in_action_rejected(tmp_path, line):
+    if line.startswith("default_action"):
+        text = f"version: 1\n{line}\n"
+    else:
+        text = f'version: 1\ntools:\n  - tool: t\n    {line}\n    resource: "r"\n'
+    with pytest.raises(BindingError, match="action"):
+        make(tmp_path, text)
+
+
+def test_target_and_tool_allowed_in_action(tmp_path):
+    b = make(tmp_path, 'version: 1\ntargets: [crm]\ndefault_action: "a:${target}/${tool}"\n')
+    assert b.default_action == "a:${target}/${tool}"

@@ -1,5 +1,6 @@
 # sidecar/tests/test_extauthz.py
 import json
+import logging
 import re
 
 import grpc
@@ -10,7 +11,7 @@ from openapl import Authorizer
 
 from openapl_sidecar.bindings import load_bindings
 from openapl_sidecar.config import Settings
-from openapl_sidecar.extauthz import make_extauthz_server
+from openapl_sidecar.extauthz import grpc_address, make_extauthz_server
 from openapl_sidecar.gate import Gate
 
 NS = "envoy.filters.http.jwt_authn"
@@ -127,9 +128,25 @@ def test_dev_header_ignored_without_dev_mode(serve, gate, alice_claims):
     claims = {**alice_claims, "act": {"sub": "unknown-agent"}}
     resp = serve(gate)(call(**OPEN), claims, headers=CHAIN)
     assert resp.status.code == 7
+    assert hdrs(resp)["x-openapl-decision"] == "DENY"
 
 
 def test_dev_header_used_in_dev_mode(serve, dev_gate, alice_claims):
     claims = {**alice_claims, "act": {"sub": "unknown-agent"}}
     resp = serve(dev_gate, dev_mode=True)(call(**OPEN), claims, headers=CHAIN)
     assert resp.status.code == 0
+
+
+def test_internal_error_is_logged(serve, gate, alice_claims, monkeypatch, caplog):
+    def boom(*a, **k):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(gate, "check_mcp", boom)
+    with caplog.at_level(logging.ERROR, logger="openapl_sidecar"):
+        serve(gate)(call(**OPEN), alice_claims)
+    assert any(r.name == "openapl_sidecar" and r.exc_info for r in caplog.records)
+
+
+def test_grpc_address_brackets_ipv6():
+    assert grpc_address("0.0.0.0", 9000) == "0.0.0.0:9000"
+    assert grpc_address("::", 9000) == "[::]:9000"
+    assert grpc_address("::1", 1) == "[::1]:1"

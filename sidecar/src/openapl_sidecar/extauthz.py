@@ -1,5 +1,6 @@
 # sidecar/src/openapl_sidecar/extauthz.py
 import json
+import logging
 from concurrent import futures
 
 import grpc
@@ -14,6 +15,7 @@ from openapl_sidecar.config import Settings
 from openapl_sidecar.gate import Gate, GateResult
 
 CHAIN_HEADER = "x-openapl-chain"
+log = logging.getLogger("openapl_sidecar")
 
 
 def _denied(r: GateResult) -> external_auth_pb2.CheckResponse:
@@ -69,7 +71,12 @@ class OpenAplAuthorization(external_auth_pb2_grpc.AuthorizationServicer):
             r = self.gate.check_mcp(http.method, body, claims, chain)
             return _allowed(r) if r.decision == "ALLOW" else _denied(r)
         except Exception:
+            log.exception("ext_authz Check failed")
             return _denied(GateResult("DENY", ("internal error",), (), ()))
+
+
+def grpc_address(host: str, port: int) -> str:
+    return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
 
 
 def make_extauthz_server(gate: Gate, settings: Settings,
@@ -78,5 +85,5 @@ def make_extauthz_server(gate: Gate, settings: Settings,
     external_auth_pb2_grpc.add_AuthorizationServicer_to_server(
         OpenAplAuthorization(gate, settings), server)
     p = port if port is not None else settings.extauthz_port
-    bound = server.add_insecure_port(f"{settings.bind_host}:{p}")
+    bound = server.add_insecure_port(grpc_address(settings.bind_host, p))
     return server, bound

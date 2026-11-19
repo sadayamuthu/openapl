@@ -11,7 +11,10 @@ The sidecar contains no decision logic. Every decision comes from
 `openapl.Authorizer.decide`; the sidecar only extracts verified claims,
 maps the request onto an action, resource and attributes, and fails closed
 on anything unexpected (parse error, unknown method, unbound placeholder,
-missing claims, decision-log write failure, internal error).
+decision-log write failure, internal error). Only `tools/call` needs
+claims (missing claims deny it). Passthrough MCP methods, notifications,
+responses and GET/DELETE are allowed without claims, so agentgateway JWT
+authentication must be mandatory (strict) on the MCP route.
 
 Purpose, task id, approvals and `iat` come only from verified JWT claims
 (`openapl_purpose`, `openapl_task_id`, `openapl_approvals`, `iat`), never
@@ -36,7 +39,8 @@ docker run -d -p 127.0.0.1:8081:8081 -e OPENAPL_PDP_TOKEN=secret \
 The image runs as user `openapl` (uid 10001), exposes 8081 and 9000, and has
 a health check on `/healthz`. Startup errors (bad configuration, policies or
 bindings) print `openapl-sidecar: <message>` to stderr and exit 2 before any
-port is opened. SIGTERM and SIGINT shut down both listeners and exit 0.
+port is opened; the same applies to an unwritable decision log and to a
+port that cannot be bound. SIGTERM and SIGINT shut down both listeners and exit 0.
 
 ## Configuration
 
@@ -90,6 +94,12 @@ tools:
   (each is decided and logged separately); one denied call denies the whole
   request. A batch of only passthrough messages is allowed. An empty batch,
   a non-JSON or truncated body, or a malformed message denies.
+- MCP bodies with NaN, Infinity, overflowing numbers or duplicate JSON keys
+  are denied.
+- A binding's `action` and `default_action` may not use `${args.*}`
+  placeholders (rejected at load), so a caller never chooses the action.
+- A decision id in a response may have no log record when the decision log
+  write failed (the decision is then DENY).
 - HTTP `GET` (SSE) and `DELETE` on the MCP endpoint are allowed without a
   decision. Any HTTP method other than `POST`, `GET` and `DELETE` is denied.
 
@@ -115,7 +125,8 @@ integral floats are converted back to ints. The request body is read from
 
 - `POST /access/v1/evaluation`: `subject{type,id}`, `action{name}` and
   `resource{type,id}` are required (400 otherwise); `resource.properties`
-  become attributes. Response: `{"decision": bool, "context": {"openapl": ...}}`.
+  become attributes. `context.attributes` is merged with
+  `resource.properties` (a key in both is a 400). Response: `{"decision": bool, "context": {"openapl": ...}}`.
   A deny is `200 {"decision": false}`. `X-Request-ID` is echoed.
 - Verified claims travel in `context.claims`. `subject.id` must equal the
   claims identity (`email`, else `sub`).
@@ -128,7 +139,8 @@ integral floats are converted back to ints. The request body is read from
 - `GET /.well-known/authzen-configuration` is served only when
   `OPENAPL_PDP_BASE_URL` is set. `GET /healthz` needs no token.
 - Hardening: a missing or wrong bearer token is 401 with `WWW-Authenticate`
-  (constant-time compare); NaN and Infinity are rejected (400); bodies over
+  (constant-time compare); NaN, Infinity and numbers that overflow to infinity are rejected (400);
+  duplicate JSON keys are rejected (400); bodies over
   1 MiB are 413; `Transfer-Encoding` is rejected; each socket read has a 10 s
   timeout.
 

@@ -58,6 +58,13 @@ def _check_template(value: Any, where: str) -> str:
     return value
 
 
+def _check_action(value: Any, where: str) -> str:
+    template = _check_template(value, where)
+    if "${args." in template:
+        raise BindingError(f"{where} must not use ${{args.*}} placeholders: {template!r}")
+    return template
+
+
 def _str_list(value: Any, where: str) -> list[str]:
     if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
         raise BindingError(f"{where} must be a list of strings")
@@ -90,7 +97,7 @@ def load_bindings(path: str | None) -> Bindings:
         raise BindingError(f"prefix_mode must be one of {', '.join(_PREFIX_MODES)}")
     passthrough = (frozenset(_str_list(doc["passthrough_methods"], "passthrough_methods"))
                    if "passthrough_methods" in doc else _DEFAULT_PASSTHROUGH)
-    default_action = _check_template(doc.get("default_action", _DEFAULT_ACTION), "default_action")
+    default_action = _check_action(doc.get("default_action", _DEFAULT_ACTION), "default_action")
     default_resource = _check_template(doc.get("default_resource", _DEFAULT_RESOURCE), "default_resource")
 
     entries = doc.get("tools", [])
@@ -121,7 +128,7 @@ def load_bindings(path: str | None) -> Bindings:
         tools.append(ToolBinding(
             tool=tool,
             target=target,
-            action=_check_template(e["action"], f"tools[{i}].action"),
+            action=_check_action(e["action"], f"tools[{i}].action"),
             resource=_check_template(e["resource"], f"tools[{i}].resource"),
             attributes={str(k): _check_template(v, f"tools[{i}].attributes.{k}") for k, v in attrs.items()},
         ))
