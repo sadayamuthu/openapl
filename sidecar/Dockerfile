@@ -13,7 +13,7 @@ USER openapl
 ENV OPENAPL_POLICY_DIR=/policies
 EXPOSE 8081 9000
 
-HEALTHCHECK CMD python -c "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8081/healthz', timeout=2)"
+HEALTHCHECK --interval=5s --timeout=3s --retries=3 CMD python -c "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8081/healthz', timeout=2)"
 
 ENTRYPOINT ["openapl-sidecar"]
 CMD ["serve"]

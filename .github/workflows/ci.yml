@@ -55,7 +55,7 @@ jobs:
           docker run -d --name apl-smoke -p 127.0.0.1:18081:8081 \
             -e OPENAPL_PDP_TOKEN=t \
             -v "$PWD/spec/examples:/policies:ro" openapl-sidecar:ci
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             s=$(docker inspect -f '{{.State.Health.Status}}' apl-smoke)
             [ "$s" = healthy ] && break
             sleep 1
