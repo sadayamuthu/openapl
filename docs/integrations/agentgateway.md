@@ -235,7 +235,7 @@ ride along in a batch. See [VERIFIED.md](../../demo/agentgateway/VERIFIED.md).
 ### Cleanup
 
 ```bash
-cd ..   # back to the repository root if you ran Verify from demo/agentgateway
+cd ../..   # back to the repository root if you ran Verify from demo/agentgateway
 docker compose -f demo/agentgateway/compose.yaml down -v
 ```
 
