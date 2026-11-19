@@ -1,0 +1,59 @@
+scenario: approval-bound
+title: An approval is bound to its request, caller and lifetime
+threat: null
+# The approval below was issued for amount 350 on payment/p1, called by payments-agent, for
+# user:alice@acme.com. attributes_hash is SHA-256 of the canonical JSON {"amount":350,"payment_id":"p1"}
+# (computed with openapl.approvals.attributes_hash; the 5000 variant is
+# a679f3d6d96f5f3a2053d055ffb610ef7c9cb319d6f43af1971f21db28936fbe).
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [finance] } }
+      - { id: payments-agent, kind: agent }
+    action: payments.pay
+    resource: payment/p1
+    attributes: { amount: 350, payment_id: p1 }
+    now: 1000
+    approvals:
+      - entitlement_id: payment-small
+        approver: "role:finance-lead"
+        action: payments.pay
+        resource: payment/p1
+        attributes_hash: 7ff01fba53f82af324888a9a67db0707d64f89034991cf2ce0998e2562d25fac
+        origin: "user:alice@acme.com"
+        caller: payments-agent
+        exp: 2000
+cases:
+  - id: valid-approval
+    expect: ALLOW
+  - id: approval-at-expiry-bound
+    description: exp >= now is inclusive.
+    request: { now: 2000 }
+    expect: ALLOW
+  - id: no-approval-presented
+    request: { approvals: [] }
+    expect: REQUIRE_APPROVAL
+    reasons_include: ["payments-agent needs approval for payment-small"]
+  - id: replay-with-different-attributes
+    description: The 350 approval replayed for 5000.
+    request: { attributes: { amount: 5000, payment_id: p1 } }
+    expect: REQUIRE_APPROVAL
+  - id: replay-by-different-caller
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [finance] } }
+        - { id: other-agent, kind: agent }
+    expect: REQUIRE_APPROVAL
+    reasons_include: ["other-agent needs approval for payment-small"]
+  - id: replay-by-different-origin
+    request:
+      chain:
+        - { id: "user:bob@acme.com", kind: human, claims: { groups: [finance] } }
+        - { id: payments-agent, kind: agent }
+    expect: REQUIRE_APPROVAL
+  - id: replay-on-different-resource
+    request: { resource: payment/p2 }
+    expect: REQUIRE_APPROVAL
+  - id: expired-approval
+    request: { now: 2001 }
+    expect: REQUIRE_APPROVAL

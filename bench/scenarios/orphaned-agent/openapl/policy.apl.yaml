@@ -1,0 +1,21 @@
+openapl: '0.1'
+policy: orphaned-agent
+version: 1.0.0
+description: A report agent owned by priya@acme.com.
+principals:
+  report-agent:
+    kind: agent
+    identity: { oauth_client_id: report-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:analysts
+        actions: [report.run]
+entitlements:
+  - id: analysts-run
+    grant_to: ["group:analysts"]
+    action: report.run
+    resource: "report/*"
+  - id: report-agent-run
+    grant_to: [report-agent]
+    action: report.run
+    resource: "report/*"

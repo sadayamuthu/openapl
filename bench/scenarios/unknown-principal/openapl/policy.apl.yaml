@@ -1,0 +1,24 @@
+openapl: '0.1'
+policy: unknown-principal
+version: 1.0.0
+description: One known agent and one known relay.
+principals:
+  known-agent:
+    kind: agent
+    identity: { oauth_client_id: known-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:staff
+        actions: [notes.read]
+    may_delegate:
+      - to: known-relay
+        actions: [notes.read]
+  known-relay:
+    kind: agent
+    identity: { oauth_client_id: known-relay }
+    owner: priya@acme.com
+entitlements:
+  - id: everyone-reads
+    grant_to: ["*"]
+    action: notes.read
+    resource: "note/*"

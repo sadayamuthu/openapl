@@ -1,0 +1,26 @@
+openapl: '0.1'
+policy: glob-resource
+version: 1.0.0
+description: Wiki read access by wildcard, with HR salary pages denied.
+principals:
+  wiki-agent:
+    kind: agent
+    identity: { oauth_client_id: wiki-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:staff
+        actions: [docs.read]
+entitlements:
+  - id: staff-read-docs
+    grant_to: ["group:staff"]
+    action: docs.read
+    resource: "docs/*"
+  - id: wiki-agent-read-docs
+    grant_to: [wiki-agent]
+    action: docs.read
+    resource: "docs/*"
+deny:
+  - id: no-salary-pages
+    grant_to: ["*"]
+    action: docs.read
+    resource: "docs/hr/salaries*"

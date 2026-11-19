@@ -1,0 +1,37 @@
+openapl: '0.1'
+policy: attenuation-3hop
+version: 1.0.0
+description: Four-link chain whose middle edge passes on read and comment but not write.
+principals:
+  intake-agent:
+    kind: agent
+    identity: { oauth_client_id: intake-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:editors
+        actions: [doc.read, doc.write, doc.comment]
+    may_delegate:
+      - to: summary-agent
+        actions: [doc.read, doc.comment]
+  summary-agent:
+    kind: agent
+    identity: { oauth_client_id: summary-agent }
+    owner: priya@acme.com
+    may_delegate:
+      - to: publish-agent
+        actions: [doc.read, doc.write, doc.comment]
+  publish-agent:
+    kind: agent
+    identity: { oauth_client_id: publish-agent }
+    owner: priya@acme.com
+entitlements:
+  - id: editors-doc
+    grant_to: ["group:editors"]
+    action: "doc.*"
+    resource: "doc/*"
+  - id: publish-agent-doc
+    grant_to: [publish-agent]
+    action: "doc.*"
+    resource: "doc/*"
+delegation:
+  max_depth: 3

@@ -1,0 +1,38 @@
+scenario: unknown-principal
+title: An actor that resolves to no principal
+threat: null
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [staff] } }
+      - { id: known-agent, kind: agent }
+    action: notes.read
+    resource: note/1
+    now: 1000
+cases:
+  - id: known-agent
+    expect: ALLOW
+  - id: known-relay-chain
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [staff] } }
+        - { id: known-agent, kind: agent }
+        - { id: known-relay, kind: agent }
+    expect: ALLOW
+  - id: unknown-caller
+    description: The gateway could not resolve the actor, so the link carries an unknown:<sub> id (P5).
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [staff] } }
+        - { id: "unknown:rogue-agent", kind: agent }
+    expect: DENY
+    reasons_include: ["unknown principal unknown:rogue-agent"]
+  - id: unknown-relay-in-the-middle
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [staff] } }
+        - { id: known-agent, kind: agent }
+        - { id: "unknown:rogue-relay", kind: agent }
+        - { id: known-relay, kind: agent }
+    expect: DENY
+    reasons_include: ["unknown principal unknown:rogue-relay"]

@@ -1,0 +1,28 @@
+openapl: '0.1'
+policy: expiring-grants
+version: 1.0.0
+description: Two agent grants that lapse, one with the task and one after 15 minutes.
+principals:
+  report-agent:
+    kind: agent
+    identity: { oauth_client_id: report-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:analysts
+        actions: [report.run, report.export]
+entitlements:
+  - id: analysts-reports
+    grant_to: ["group:analysts"]
+    action: "report.*"
+    resource: "report/*"
+  - id: agent-run-for-task
+    grant_to: [report-agent]
+    action: report.run
+    resource: "report/*"
+    purpose: quarterly-report
+    expires: task
+  - id: agent-export-15m
+    grant_to: [report-agent]
+    action: report.export
+    resource: "report/*"
+    expires: 15m

@@ -1,0 +1,37 @@
+scenario: group-and-role
+title: acts_for through a group, a grant through a role
+threat: null
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [sre], roles: [oncall] } }
+      - { id: ops-agent, kind: agent }
+    action: ops.restart
+    resource: service/api
+    now: 1000
+cases:
+  - id: group-and-role-both-present
+    expect: ALLOW
+  - id: single-string-claims
+    description: A claim that is one string is a one-item list (SPEC 5.2).
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: sre, roles: oncall } }
+        - { id: ops-agent, kind: agent }
+    expect: ALLOW
+  - id: group-without-role
+    description: The group gives the edge but only the role grants the action to the origin.
+    request:
+      chain:
+        - { id: "user:bob@acme.com", kind: human, claims: { groups: [sre], roles: [] } }
+        - { id: ops-agent, kind: agent }
+    expect: DENY
+    reasons_include: ["user:bob@acme.com has no grant for ops.restart on service/api"]
+  - id: role-without-group
+    description: The role grants the origin but no acts_for selects them.
+    request:
+      chain:
+        - { id: "user:carol@acme.com", kind: human, claims: { groups: [dev], roles: [oncall] } }
+        - { id: ops-agent, kind: agent }
+    expect: DENY
+    reasons_include: ["no delegation edge user:carol@acme.com -> ops-agent for ops.restart"]
