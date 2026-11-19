@@ -1,6 +1,6 @@
 # OpenAPL
 
-**Access Policy Language for humans and AI agents.**
+**Access Policy Language for humans and AI agents — an IAM policy layer for agentic systems.**
 
 > **Who can do what, for whom — and the proof of it.**
 
