@@ -1,0 +1,12 @@
+version: 1
+targets: [payments]          # MCP target names known to the gateway
+prefix_mode: conditional     # conditional | always | never  (mirrors agentgateway prefixMode)
+passthrough_methods: [initialize, ping, tools/list]
+default_action: "mcp.tools.call:${target}/${tool}"
+default_resource: "tool:${target}/${tool}"
+tools:
+  - tool: refund_order
+    target: payments
+    action: payments.refund
+    resource: "order/${args.order_id}"
+    attributes: { order_id: "${args.order_id}", amount: "${args.amount}", account_status: "${args.account_status}" }

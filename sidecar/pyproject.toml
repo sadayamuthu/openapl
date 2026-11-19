@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openapl-sidecar"
+dynamic = ["version"]
+description = "OpenAPL sidecar: AuthZEN PDP and Envoy ext_authz adapter for the OpenAPL SDK"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+dependencies = ["openapl", "pyyaml>=6.0", "grpcio>=1.85", "xds-protos>=1.85"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+openapl-sidecar = "openapl_sidecar.server:main"
+
+[tool.hatch.version]
+path = "src/openapl_sidecar/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openapl_sidecar"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
