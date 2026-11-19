@@ -174,14 +174,6 @@
     },
     {
       "scenario": "deny-overrides",
-      "case": "route-avoiding-the-denied-relay",
-      "expect": "ALLOW",
-      "got": "ALLOW",
-      "ok": true,
-      "reasons": []
-    },
-    {
-      "scenario": "deny-overrides",
       "case": "deny-on-origin-group",
       "expect": "DENY",
       "got": "DENY",
@@ -432,8 +424,7 @@
       "got": "DENY",
       "ok": true,
       "reasons": [
-        "no delegation edge user:alice@acme.com -> helpdesk-agent for tickets.delete",
-        "helpdesk-agent has no grant for tickets.delete on ticket/9"
+        "no delegation edge user:alice@acme.com -> helpdesk-agent for tickets.delete"
       ]
     },
     {
@@ -443,8 +434,7 @@
       "got": "DENY",
       "ok": true,
       "reasons": [
-        "no delegation edge user:alice@acme.com -> helpdesk-agent for tickets.read-all",
-        "helpdesk-agent has no grant for tickets.read-all on ticket/9"
+        "no delegation edge user:alice@acme.com -> helpdesk-agent for tickets.read-all"
       ]
     },
     {
@@ -548,6 +538,16 @@
       "reasons": [
         "unknown principal unknown:rogue-agent",
         "no delegation edge user:alice@acme.com -> unknown:rogue-agent for notes.read"
+      ]
+    },
+    {
+      "scenario": "unknown-principal",
+      "case": "unknown-single-link-chain",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [
+        "unknown principal unknown:x"
       ]
     },
     {

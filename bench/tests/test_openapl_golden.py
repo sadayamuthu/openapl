@@ -25,3 +25,5 @@ def test_openapl_golden(tmp_path, scenario, case):
     assert d.decision == case.expect, d.reasons
     for fragment in case.reasons_include:
         assert fragment in d.reasons, d.reasons
+    for fragment in case.reasons_exclude:
+        assert not any(fragment in r for r in d.reasons), d.reasons

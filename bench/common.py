@@ -19,6 +19,7 @@ class Case:
     request: dict
     expect: str
     reasons_include: tuple[str, ...] = ()
+    reasons_exclude: tuple[str, ...] = ()  # fragments that must NOT appear, to isolate one reason
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,7 @@ def load_scenarios(root: str = "bench/scenarios") -> list[Scenario]:
             cases.append(Case(
                 id=raw["id"], request=request, expect=raw["expect"],
                 reasons_include=tuple(raw.get("reasons_include") or ()),
+                reasons_exclude=tuple(raw.get("reasons_exclude") or ()),
             ))
         scenarios.append(Scenario(
             id=sid, title=doc["title"], threat=doc.get("threat"),

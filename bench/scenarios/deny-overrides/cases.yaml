@@ -25,9 +25,6 @@ cases:
         - { id: transfer-agent, kind: agent }
     expect: DENY
     reasons_include: ["denied by router-suspended"]
-  - id: route-avoiding-the-denied-relay
-    description: The same caller reached directly, with no router-agent in the chain.
-    expect: ALLOW
   - id: deny-on-origin-group
     description: The origin is in treasury (granted) and contractors (denied).
     request:

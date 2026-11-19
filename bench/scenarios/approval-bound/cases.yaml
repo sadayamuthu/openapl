@@ -38,6 +38,7 @@ cases:
     description: The 350 approval replayed for 5000.
     request: { attributes: { amount: 5000, payment_id: p1 } }
     expect: REQUIRE_APPROVAL
+    reasons_include: ["payments-agent needs approval for payment-small"]
   - id: replay-by-different-caller
     request:
       chain:
@@ -51,9 +52,12 @@ cases:
         - { id: "user:bob@acme.com", kind: human, claims: { groups: [finance] } }
         - { id: payments-agent, kind: agent }
     expect: REQUIRE_APPROVAL
+    reasons_include: ["payments-agent needs approval for payment-small"]
   - id: replay-on-different-resource
     request: { resource: payment/p2 }
     expect: REQUIRE_APPROVAL
+    reasons_include: ["payments-agent needs approval for payment-small"]
   - id: expired-approval
     request: { now: 2001 }
     expect: REQUIRE_APPROVAL
+    reasons_include: ["payments-agent needs approval for payment-small"]

@@ -22,3 +22,5 @@ entitlements:
     grant_to: ["*"]
     action: notes.read
     resource: "note/*"
+delegation:
+  require_human_origin: false

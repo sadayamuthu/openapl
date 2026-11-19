@@ -27,6 +27,14 @@ cases:
         - { id: "unknown:rogue-agent", kind: agent }
     expect: DENY
     reasons_include: ["unknown principal unknown:rogue-agent"]
+  - id: unknown-single-link-chain
+    description: Isolated, with require_human_origin false and a * grant, the unknown principal is the only reason.
+    request:
+      chain:
+        - { id: "unknown:x", kind: agent }
+    expect: DENY
+    reasons_include: ["unknown principal unknown:x"]
+    reasons_exclude: ["has no grant", "delegation edge", "human origin"]
   - id: unknown-relay-in-the-middle
     request:
       chain:

@@ -1,7 +1,7 @@
 openapl: '0.1'
 policy: helpdesk
 version: 1.0.0
-description: A helpdesk agent delegated read only; the human may also delete tickets.
+description: A helpdesk agent delegated read only, whose own grant is over-broad; the human may also delete tickets.
 principals:
   helpdesk-agent:
     kind: agent
@@ -15,7 +15,7 @@ entitlements:
     grant_to: ["group:support"]
     action: "tickets.*"
     resource: "ticket/*"
-  - id: helpdesk-agent-read
+  - id: helpdesk-agent-tool-binding
     grant_to: [helpdesk-agent]
-    action: tickets.read
+    action: "tickets.*"
     resource: "ticket/*"

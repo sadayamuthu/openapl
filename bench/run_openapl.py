@@ -60,7 +60,8 @@ def run(scenarios: list[Scenario]) -> list[dict]:
                 got, reasons = d.decision, list(d.reasons)
             except Exception as e:  # an engine error is a mismatch, never a skip
                 got, reasons = "ERROR", [f"{type(e).__name__}: {e}"]
-            ok = got == c.expect and all(f in reasons for f in c.reasons_include)
+            ok = (got == c.expect and all(f in reasons for f in c.reasons_include)
+                  and not any(x in r for x in c.reasons_exclude for r in reasons))
             rows.append({"scenario": s.id, "case": c.id, "expect": c.expect, "got": got,
                          "ok": ok, "reasons": reasons})
     return rows
