@@ -1,0 +1,13 @@
+# bench/scenarios/expired-task-grant/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: >-
+    The task grant needs `context has task_id` and the purpose; the 15m grant compares iat and
+    now with Long arithmetic (iat <= now, now - iat <= 900).
+  lines: ["cedar/policies.cedar:6-20"]
+rego:
+  grade: native
+  why: "Purpose, task id and iat/now checks are plain comparisons on input."
+  lines: ["rego/policy.rego:46-62"]
+# xacml, gapl: written analyses, added in Task 3.

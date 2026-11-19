@@ -1,0 +1,11 @@
+# bench/scenarios/forged-purpose/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: "context.purpose (the verified claim) is separate from context.attributes (tool arguments)."
+  lines: ["cedar/policies.cedar:6-11"]
+rego:
+  grade: native
+  why: "input.purpose (the verified claim) is separate from input.attributes."
+  lines: ["rego/policy.rego:45-52"]
+# xacml, gapl: written analyses, added in Task 3.

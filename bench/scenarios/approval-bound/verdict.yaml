@@ -1,0 +1,19 @@
+# bench/scenarios/approval-bound/verdict.yaml
+openapl: native
+cedar:
+  grade: workaround
+  why: >-
+    Cedar has no hash function, no existential over a set with a comparison, and no third
+    decision. attributes_hash and each item's `expired` flag (exp < now) are computed outside
+    Cedar so a whole-record `contains` can bind the item; REQUIRE_APPROVAL is a reason (the
+    runner reads ALLOW determined only by a `needs-approval:` permit as REQUIRE_APPROVAL).
+  lines: ["cedar/policies.cedar:22-46"]
+rego:
+  grade: native
+  why: >-
+    The approval item is matched field by field over input.approvals, the attributes hash is
+    computed in Rego (crypto.sha256 of json.marshal), exp >= now is compared in Rego, and the
+    decision document is the three-valued string. Caveat: json.marshal HTML-escapes <, > and
+    &, which OpenAPL's canonical JSON does not; no case value contains them.
+  lines: ["rego/policy.rego:73-96", "rego/policy.rego:112-125"]
+# xacml, gapl: written analyses, added in Task 3.

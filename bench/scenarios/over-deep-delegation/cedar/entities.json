@@ -1,0 +1,5 @@
+[
+  {"uid": {"type": "Agent", "id": "agent-a"}, "attrs": {"owner": "priya@acme.com"}, "parents": []},
+  {"uid": {"type": "Agent", "id": "agent-b"}, "attrs": {"owner": "priya@acme.com"}, "parents": []},
+  {"uid": {"type": "Agent", "id": "agent-c"}, "attrs": {"owner": "priya@acme.com"}, "parents": []}
+]

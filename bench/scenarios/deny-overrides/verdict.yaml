@@ -1,0 +1,14 @@
+# bench/scenarios/deny-overrides/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: >-
+    Forbid overrides permit in Cedar. Denies on any link use the set of agent links
+    (context.agents.contains) and the origin's group parents. The router->transfer edge reads
+    the precomputed context.hops, but no case's decision depends on it.
+  lines: ["cedar/policies.cedar:40-55"]
+rego:
+  grade: native
+  why: "`some link in chain` deny rules; ALLOW requires `not denied`."
+  lines: ["rego/policy.rego:66-93"]
+# xacml, gapl: written analyses, added in Task 3.

@@ -1,0 +1,13 @@
+# bench/scenarios/over-deep-delegation/verdict.yaml
+openapl: native
+cedar:
+  grade: workaround
+  why: >-
+    Cedar sets have no size, so context.depth = len(chain) - 1 is computed outside Cedar, and
+    the edges read the precomputed context.hops.
+  lines: ["cedar/policies.cedar:34-45"]
+rego:
+  grade: native
+  why: "count(chain) - 1 <= 2 in the ALLOW rule."
+  lines: ["rego/policy.rego:59-74"]
+# xacml, gapl: written analyses, added in Task 3.

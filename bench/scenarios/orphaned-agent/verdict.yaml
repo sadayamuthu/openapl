@@ -1,0 +1,14 @@
+# bench/scenarios/orphaned-agent/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: >-
+    The caller's owner attribute is checked against context.active_owners (the snapshot).
+    Cedar cannot map over every chain link's owner, but this policy has no may_delegate edge,
+    so the caller is the only agent any allowed chain can contain.
+  lines: ["cedar/policies.cedar:37-39"]
+rego:
+  grade: native
+  why: "Every agent link's owner is looked up and checked against input.directory.active."
+  lines: ["rego/policy.rego:62-77"]
+# xacml, gapl: written analyses, added in Task 3.

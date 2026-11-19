@@ -1,0 +1,14 @@
+# bench/scenarios/attenuation-3hop/verdict.yaml
+openapl: native
+cedar:
+  grade: workaround
+  why: >-
+    Cedar has no lists or iteration, so the ordered chain is flattened outside Cedar into the
+    set of consecutive agent pairs context.hops; each action then requires the hops to be a
+    subset (containsAll) of the edges that list it.
+  lines: ["cedar/policies.cedar:31-46"]
+rego:
+  grade: native
+  why: "`every` over input.chain checks each consecutive edge against the may_delegate table."
+  lines: ["rego/policy.rego:28-36", "rego/policy.rego:53-68"]
+# xacml, gapl: written analyses, added in Task 3.

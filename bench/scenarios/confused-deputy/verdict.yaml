@@ -1,0 +1,14 @@
+# bench/scenarios/confused-deputy/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: >-
+    The caller's grant is a permit, the origin's grant a forbid-unless on context.origin (the
+    human, with groups as parents), and the acts_for edge a forbid-unless; no case depends on
+    a value computed outside Cedar.
+  lines: ["cedar/policies.cedar:5-28"]
+rego:
+  grade: native
+  why: "granted(origin) and granted(caller) are both required next to the acts_for edge rule."
+  lines: ["rego/policy.rego:39-67"]
+# xacml, gapl: written analyses, added in Task 3.

@@ -1,0 +1,11 @@
+# bench/scenarios/glob-resource/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: "`like` with `*` matches across `/`; the specific deny is a forbid."
+  lines: ["cedar/policies.cedar:5-11", "cedar/policies.cedar:35-37"]
+rego:
+  grade: native
+  why: "glob.match with null delimiters lets `*` cross `/`; the deny is a rule."
+  lines: ["rego/policy.rego:25", "rego/policy.rego:39-63"]
+# xacml, gapl: written analyses, added in Task 3.

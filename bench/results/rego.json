@@ -1,0 +1,614 @@
+{
+  "command": "python bench/run_rego.py --out bench/results/rego.json",
+  "engine": "rego",
+  "tool": {
+    "cli": "opa 1.22.4 (static)",
+    "wrapper": "bench/bin/opa"
+  },
+  "total": 60,
+  "matched": 60,
+  "mismatches": 0,
+  "unsupported": 0,
+  "rows": [
+    {
+      "scenario": "approval-bound",
+      "case": "valid-approval",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "approval-bound",
+      "case": "approval-at-expiry-bound",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "approval-bound",
+      "case": "no-approval-presented",
+      "expect": "REQUIRE_APPROVAL",
+      "got": "REQUIRE_APPROVAL",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "approval-bound",
+      "case": "replay-with-different-attributes",
+      "expect": "REQUIRE_APPROVAL",
+      "got": "REQUIRE_APPROVAL",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "approval-bound",
+      "case": "replay-by-different-caller",
+      "expect": "REQUIRE_APPROVAL",
+      "got": "REQUIRE_APPROVAL",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "approval-bound",
+      "case": "replay-by-different-origin",
+      "expect": "REQUIRE_APPROVAL",
+      "got": "REQUIRE_APPROVAL",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "approval-bound",
+      "case": "replay-on-different-resource",
+      "expect": "REQUIRE_APPROVAL",
+      "got": "REQUIRE_APPROVAL",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "approval-bound",
+      "case": "expired-approval",
+      "expect": "REQUIRE_APPROVAL",
+      "got": "REQUIRE_APPROVAL",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "attenuation-3hop",
+      "case": "read-full-edge-set",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "attenuation-3hop",
+      "case": "comment-full-edge-set",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "attenuation-3hop",
+      "case": "write-middle-edge-omits-action",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "attenuation-3hop",
+      "case": "read-skipping-middle-hop",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "confused-deputy",
+      "case": "finance-user-via-agent",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "confused-deputy",
+      "case": "staff-without-finance-denied",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "confused-deputy",
+      "case": "finance-without-staff-has-no-edge",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "deny-overrides",
+      "case": "granted-and-not-denied",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "deny-overrides",
+      "case": "deny-on-resource",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "deny-overrides",
+      "case": "deny-on-intermediary",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "deny-overrides",
+      "case": "deny-on-origin-group",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "expired-task-grant",
+      "case": "task-grant-with-task-id",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "expired-task-grant",
+      "case": "task-grant-without-task-id",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "expired-task-grant",
+      "case": "duration-grant-fresh-token",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "expired-task-grant",
+      "case": "duration-grant-at-the-bound",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "expired-task-grant",
+      "case": "duration-grant-expired-via-iat",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "expired-task-grant",
+      "case": "duration-grant-without-iat",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "expired-task-grant",
+      "case": "duration-grant-token-from-the-future",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "forged-purpose",
+      "case": "purpose-claim-present",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "forged-purpose",
+      "case": "purpose-only-in-attributes",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "forged-purpose",
+      "case": "purpose-claim-different",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "glob-resource",
+      "case": "matches-wildcard",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "glob-resource",
+      "case": "wildcard-crosses-slashes",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "glob-resource",
+      "case": "specific-deny-wins",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "glob-resource",
+      "case": "neighbour-of-denied-path",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "glob-resource",
+      "case": "outside-the-wildcard",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "group-and-role",
+      "case": "group-and-role-both-present",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "group-and-role",
+      "case": "single-string-claims",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "group-and-role",
+      "case": "group-without-role",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "group-and-role",
+      "case": "role-without-group",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "orphaned-agent",
+      "case": "owner-active",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "orphaned-agent",
+      "case": "owner-absent",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "orphaned-agent",
+      "case": "empty-directory",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "over-deep-delegation",
+      "case": "depth-1",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "over-deep-delegation",
+      "case": "depth-2-at-the-limit",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "over-deep-delegation",
+      "case": "depth-3-over-the-limit",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "prompt-injected-escalation",
+      "case": "delegated-read",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "prompt-injected-escalation",
+      "case": "injected-delete",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "prompt-injected-escalation",
+      "case": "lookalike-action-name",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "relay-adds-edge",
+      "case": "direct-chain-has-no-edge",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "relay-adds-edge",
+      "case": "relay-supplies-the-edge",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "relay-adds-edge",
+      "case": "relay-needs-group-membership",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "threshold-approval",
+      "case": "under-limit",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "threshold-approval",
+      "case": "at-limit",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "threshold-approval",
+      "case": "just-over-limit",
+      "expect": "REQUIRE_APPROVAL",
+      "got": "REQUIRE_APPROVAL",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "threshold-approval",
+      "case": "far-over-limit",
+      "expect": "REQUIRE_APPROVAL",
+      "got": "REQUIRE_APPROVAL",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "threshold-approval",
+      "case": "amount-missing",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "unknown-principal",
+      "case": "known-agent",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "unknown-principal",
+      "case": "known-relay-chain",
+      "expect": "ALLOW",
+      "got": "ALLOW",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "unknown-principal",
+      "case": "unknown-caller",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "unknown-principal",
+      "case": "unknown-single-link-chain",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    },
+    {
+      "scenario": "unknown-principal",
+      "case": "unknown-relay-in-the-middle",
+      "expect": "DENY",
+      "got": "DENY",
+      "ok": true,
+      "reasons": [],
+      "error": null,
+      "unsupported": null
+    }
+  ]
+}

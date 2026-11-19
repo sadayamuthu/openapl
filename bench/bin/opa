@@ -1,0 +1,6 @@
+#!/bin/sh
+# bench/bin/opa
+# Runs the pinned OPA (official static image) on files in the current directory, mounted
+# read-only. Paths given to the CLI must be relative to $PWD.
+exec docker run --rm -i --network none -v "$PWD":/work:ro -w /work \
+  "${OPENAPL_BENCH_OPA_IMAGE:-openpolicyagent/opa:1.22.4-static}" "$@"

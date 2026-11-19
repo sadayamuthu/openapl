@@ -1,0 +1,17 @@
+# bench/scenarios/relay-adds-edge/verdict.yaml
+openapl: native
+cedar:
+  grade: workaround
+  why: >-
+    Cedar has no string concatenation, so "order/${request.order_id}" is computed outside
+    Cedar (cedar/derived.json -> context.derived.order_resource); the relay edge reads the
+    precomputed context.hops; the otherwise path is a `needs-approval:` reason.
+  lines: ["cedar/policies.cedar:10-19", "cedar/policies.cedar:75-80"]
+rego:
+  grade: native
+  why: >-
+    sprintf builds the interpolated resource and compares it exactly; the edges and the
+    ordered when list are rules. Caveat: sprintf %v formats a non-string attribute the Go
+    way, not as Python str (cases use a string order_id).
+  lines: ["rego/policy.rego:49-80", "rego/policy.rego:114-125"]
+# xacml, gapl: written analyses, added in Task 3.
