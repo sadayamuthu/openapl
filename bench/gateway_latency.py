@@ -45,19 +45,35 @@ def summarize(samples_ns: list[int]) -> dict:
             "max_us": s[-1] / 1000, "mean_us": sum(s) / len(s) / 1000}
 
 
-def delta(a: dict, b: dict, a_batch_medians: list[float], b_batch_medians: list[float]) -> dict:
-    """a (OpenAPL) minus b (baseline); spread = max-min of the paired per-batch median differences."""
+def delta(a: dict, b: dict, a_batch_medians: list[float], b_batch_medians: list[float],
+          a_batch_p99s: list[float] | None = None, b_batch_p99s: list[float] | None = None) -> dict:
+    """a (OpenAPL) minus b (baseline). The spread fields are the range (max-min) of the N paired
+    per-batch deltas (i-th OpenAPL batch minus i-th baseline batch), not a confidence interval."""
     diffs = [x - y for x, y in zip(a_batch_medians, b_batch_medians)]
-    return {"p50_us": a["p50_us"] - b["p50_us"], "p99_us": a["p99_us"] - b["p99_us"],
-            "batch_median_spread_us": max(diffs) - min(diffs), "batch_median_deltas_us": diffs}
+    out = {"p50_us": a["p50_us"] - b["p50_us"], "p99_us": a["p99_us"] - b["p99_us"],
+           "paired_batches": len(diffs),
+           "batch_median_spread_us": max(diffs) - min(diffs),
+           "batch_median_spread_note": f"range of {len(diffs)} paired batch-median deltas",
+           "batch_median_deltas_us": diffs}
+    if a_batch_p99s is not None and b_batch_p99s is not None:
+        d99 = [x - y for x, y in zip(a_batch_p99s, b_batch_p99s)]
+        out.update({"batch_p99_spread_us": max(d99) - min(d99),
+                    "batch_p99_spread_note": f"range of {len(d99)} paired batch-p99 deltas "
+                                             "(each p99 is over one batch of per-batch samples)",
+                    "batch_p99_deltas_us": d99})
+    return out
 
 
 def batch_order(batches: int) -> list[str]:
-    """ABBA alternation, starting with openapl."""
+    """ABBA alternation, starting with openapl. Needs an even count so both configs get equal batches."""
+    if batches < 2 or batches % 2:
+        raise ValueError(f"batches must be even and >= 2, got {batches}")
     order: list[str] = []
     while len(order) < batches:
         order += ["openapl", "baseline", "baseline", "openapl"]
-    return order[:batches]
+    order = order[:batches]
+    assert order.count("openapl") == order.count("baseline")
+    return order
 
 
 def _compose(*args: str, check: bool = True) -> subprocess.CompletedProcess:
@@ -102,6 +118,20 @@ def run_batch(config: str, per_batch: int, warmup: int) -> list[int]:
     return samples
 
 
+def check_sidecar_log(expected: int) -> dict:
+    """Prove the OpenAPL hop happened: the sidecar log holds exactly one ALLOW record per OpenAPL
+    tools/call (warm-up included). The baseline has no ext_authz, so it cannot contribute records."""
+    path = OUT_DIR / "decisions.jsonl"
+    recs = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    allow = sum(1 for r in recs if r.get("decision") == "ALLOW")
+    refund = sum(1 for r in recs if r.get("action") == "payments.refund")
+    info = {"count": len(recs), "allow": allow, "payments_refund": refund, "expected": expected,
+            "note": "expected = openapl batches x (warm-up + per-batch); baseline has no ext_authz"}
+    if len(recs) < expected or allow != len(recs) or len(recs) != expected:
+        raise RuntimeError(f"sidecar decision log mismatch: {info}")
+    return info
+
+
 def gateway_env() -> dict:
     ids = _compose("ps", "-q", "--all").stdout.split()
     images: dict = {}
@@ -140,10 +170,13 @@ def main() -> int:
         env_gw = gateway_env()
         per: dict[str, list[int]] = {"openapl": [], "baseline": []}
         meds: dict[str, list[float]] = {"openapl": [], "baseline": []}
+        p99s: dict[str, list[float]] = {"openapl": [], "baseline": []}
         for i, cfg in enumerate(order):
             s = run_batch(cfg, a.per_batch, a.warmup)
             per[cfg] += s
-            meds[cfg].append(summarize(s)["p50_us"])
+            sm = summarize(s)
+            meds[cfg].append(sm["p50_us"])
+            p99s[cfg].append(sm["p99_us"])
             print(f"batch {i} {cfg}: p50={meds[cfg][-1]:.0f}us", flush=True)
         # per-batch medians are listed in chronological order within each configuration
         res = {"command": cmd, "batches": a.batches, "per_batch": a.per_batch,
@@ -152,8 +185,12 @@ def main() -> int:
                "client": "urllib, new TCP connection per request, same host (127.0.0.1)"}
         for cfg in ("openapl", "baseline"):
             res[cfg] = {**summarize(per[cfg]), "batch_medians_us": meds[cfg]}
-        res["delta"] = delta(res["openapl"], res["baseline"], meds["openapl"], meds["baseline"])
+        res["delta"] = delta(res["openapl"], res["baseline"], meds["openapl"], meds["baseline"],
+                             p99s["openapl"], p99s["baseline"])
+        res["openapl"]["batch_p99s_us"] = p99s["openapl"]
+        res["baseline"]["batch_p99s_us"] = p99s["baseline"]
         res["all_openapl_calls_200_with_result"] = True
+        res["sidecar_decisions"] = check_sidecar_log(order.count("openapl") * (a.warmup + a.per_batch))
         res["gateway_env"] = env_gw
         Path(a.out).write_text(json.dumps(res, indent=2) + "\n", encoding="utf-8")
         envp = Path(a.env)
@@ -174,7 +211,10 @@ def main() -> int:
             pass
         return 1
     finally:
-        _compose("down", "-v", "--remove-orphans", check=False)
+        try:
+            _compose("down", "-v", "--remove-orphans", check=False)
+        except Exception as e:  # never mask the original error with a teardown failure
+            sys.stderr.write(f"teardown failed (continuing): {e}\n")
 
 
 if __name__ == "__main__":

@@ -32,3 +32,26 @@ def test_delta_is_openapl_minus_baseline():
     assert d["p99_us"] == 800.0
     # spread of the per-batch median differences (a_i - b_i): 500, 550, 410
     assert d["batch_median_spread_us"] == pytest.approx(140.0)
+
+
+def test_batch_order_abba():
+    assert gl.batch_order(4) == ["openapl", "baseline", "baseline", "openapl"]
+    o = gl.batch_order(10)
+    assert o == ["openapl", "baseline", "baseline", "openapl", "openapl",
+                 "baseline", "baseline", "openapl", "openapl", "baseline"]
+    assert o.count("openapl") == o.count("baseline") == 5
+
+
+@pytest.mark.parametrize("n", [3, 7, 0])
+def test_batch_order_rejects_odd(n):
+    with pytest.raises(ValueError):
+        gl.batch_order(n)
+
+
+def test_delta_paired_p99_range():
+    a = {"p50_us": 2.0, "p99_us": 5.0}
+    b = {"p50_us": 1.0, "p99_us": 3.0}
+    d = gl.delta(a, b, [2.0, 2.0], [1.0, 1.0], [5.0, 9.0], [3.0, 4.0])
+    assert d["paired_batches"] == 2
+    assert d["batch_p99_deltas_us"] == [2.0, 5.0]
+    assert d["batch_p99_spread_us"] == 3.0

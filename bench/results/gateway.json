@@ -19,47 +19,79 @@
   "client": "urllib, new TCP connection per request, same host (127.0.0.1)",
   "openapl": {
     "n": 1000,
-    "p50_us": 2482.542,
-    "p95_us": 3014.916,
-    "p99_us": 4088.25,
-    "max_us": 14049.459,
-    "mean_us": 2573.304843,
+    "p50_us": 2512.166,
+    "p95_us": 2904.5,
+    "p99_us": 3503.917,
+    "max_us": 6344.542,
+    "mean_us": 2555.172033,
     "batch_medians_us": [
-      2430.875,
-      2493.791,
-      2455.5,
-      2525.083,
-      2496.667
+      2502.708,
+      2469.292,
+      2531.666,
+      2447.583,
+      2604.875
+    ],
+    "batch_p99s_us": [
+      3345.875,
+      2879.625,
+      3811.625,
+      2937.875,
+      3654.875
     ]
   },
   "baseline": {
     "n": 1000,
-    "p50_us": 1428.166,
-    "p95_us": 1793.875,
-    "p99_us": 2218.25,
-    "max_us": 9829.875,
-    "mean_us": 1475.4642009999998,
+    "p50_us": 1440.875,
+    "p95_us": 1762.875,
+    "p99_us": 2187.75,
+    "max_us": 9400.375,
+    "mean_us": 1485.684172,
     "batch_medians_us": [
-      1422.25,
-      1394.5,
-      1441.209,
-      1453.334,
-      1420.5
+      1433.292,
+      1426.042,
+      1449.083,
+      1495.875,
+      1403.958
+    ],
+    "batch_p99s_us": [
+      1924.541,
+      2104.958,
+      1909.334,
+      2417.375,
+      2075.375
     ]
   },
   "delta": {
-    "p50_us": 1054.376,
-    "p99_us": 1870.0,
-    "batch_median_spread_us": 90.66600000000017,
+    "p50_us": 1071.2910000000002,
+    "p99_us": 1316.167,
+    "paired_batches": 5,
+    "batch_median_spread_us": 249.20899999999983,
+    "batch_median_spread_note": "range of 5 paired batch-median deltas",
     "batch_median_deltas_us": [
-      1008.625,
-      1099.2910000000002,
-      1014.2909999999999,
-      1071.749,
-      1076.167
+      1069.4160000000002,
+      1043.25,
+      1082.583,
+      951.7080000000001,
+      1200.917
+    ],
+    "batch_p99_spread_us": 1381.791,
+    "batch_p99_spread_note": "range of 5 paired batch-p99 deltas (each p99 is over one batch of per-batch samples)",
+    "batch_p99_deltas_us": [
+      1421.334,
+      774.6669999999999,
+      1902.291,
+      520.5,
+      1579.5
     ]
   },
   "all_openapl_calls_200_with_result": true,
+  "sidecar_decisions": {
+    "count": 1100,
+    "allow": 1100,
+    "payments_refund": 1100,
+    "expected": 1100,
+    "note": "expected = openapl batches x (warm-up + per-batch); baseline has no ext_authz"
+  },
   "gateway_env": {
     "agentgateway_version": "v1.7.0",
     "docker_version": "29.9.2",
