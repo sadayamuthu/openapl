@@ -3,8 +3,8 @@ openapl: native
 cedar:
   grade: native
   why: >-
-    The task grant needs `context has task_id` and the purpose; the 15m grant compares iat and
-    now with Long arithmetic (iat <= now, now - iat <= 900).
+    The task grant needs `context has task_id` and the purpose; the 15m grant compares iat
+    and now with Long arithmetic (iat <= now, now - iat <= 900). No precomputed field.
   lines: ["cedar/policies.cedar:6-20"]
 rego:
   grade: native

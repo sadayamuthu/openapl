@@ -97,3 +97,53 @@ def test_verdict_lines_exist(scenario):
             n = len(path.read_text().splitlines())
             start, end = int(m["start"]), int(m["end"] or m["start"])
             assert 1 <= start <= end <= n, (ref, n)
+
+
+# --- R7: a `native` grade reads no precomputed field --------------------------------------
+
+import adapters.cedar_input as cedar_input  # noqa: E402
+import adapters.rego_input as rego_input  # noqa: E402
+
+TRANSLATION = {"cedar": ("cedar/policies.cedar", "//", cedar_input),
+               "rego": ("rego/policy.rego", "#", rego_input)}
+
+
+def _code(path: Path, comment: str) -> str:
+    """The translation without comments, so only decision-determining text is searched."""
+    return "\n".join(line.split(comment, 1)[0] for line in path.read_text().splitlines())
+
+
+def _readme_fields(path: Path) -> set[str]:
+    text = path.read_text()
+    section = text.split("## Computed outside", 1)[1].split("\n## ", 1)[0]
+    return set(re.findall(r"^- `([a-z_.]+)`", section, flags=re.M))
+
+
+@pytest.mark.parametrize("engine", sorted(TRANSLATION))
+@pytest.mark.parametrize("scenario", load_scenarios(), ids=lambda s: s.id)
+def test_native_reads_no_precomputed_field(scenario, engine):
+    rel, comment, adapter = TRANSLATION[engine]
+    code = _code(Path(scenario.path) / rel, comment)
+    used = {f for f in adapter.PRECOMPUTED if re.search(rf"\b{re.escape(f)}\b", code)}
+    readme = Path(scenario.path) / engine / "README.md"
+    assert _readme_fields(readme) == used, (readme, used)  # README lists exactly what is read
+    verdict = yaml.safe_load((Path(scenario.path) / "verdict.yaml").read_text())[engine]
+    mapped = engine == "cedar" and run_cedar.APPROVAL_PREFIX in code
+    if verdict["grade"] == "native":
+        assert not used and not mapped, (scenario.id, engine, used)
+    else:
+        assert verdict["grade"] == "workaround" and (used or mapped), (scenario.id, engine)
+
+
+def test_cedar_counterfactual_without_precomputed_fields():
+    """Neutralise every precomputed field and the approval mapping: each native scenario still
+    decides every case as expected, and each workaround scenario flips at least one case."""
+    scenarios = load_scenarios()
+    rows = run_cedar.run(scenarios, neutralise=True)
+    for s in scenarios:
+        grade = yaml.safe_load((Path(s.path) / "verdict.yaml").read_text())["cedar"]["grade"]
+        mine = [r for r in rows if r["scenario"] == s.id]
+        if grade == "native":
+            assert all(r["ok"] for r in mine), (s.id, [r for r in mine if not r["ok"]])
+        else:
+            assert not all(r["ok"] for r in mine), s.id

@@ -19,18 +19,19 @@ unless {
   action == Action::"report.run" && resource.path like "report/*"
 };
 
-// Delegation edges: report-agent acts_for group:analysts on report.run; no may_delegate.
+// Delegation edges: report-agent acts_for group:analysts on report.run.
 @id("no-acts-for-edge")
-forbid (principal, action, resource)
-when { context has first_agent }
+forbid (principal is Agent, action, resource)
 unless {
-  context has origin && context.first_agent == Agent::"report-agent" &&
+  context has origin && principal == Agent::"report-agent" &&
   context.origin in Group::"analysts" && action == Action::"report.run"
 };
 
+// No may_delegate edges: an agent caller must be the chain's only agent, so it is also the
+// agent the human handed the work to (the acts_for edge above is checked on the caller).
 @id("no-may-delegate-edge")
-forbid (principal, action, resource)
-when { !context.hops.isEmpty() };
+forbid (principal is Agent, action, resource)
+unless { [principal].containsAll(context.agents) };
 
 // Owner must be active in the snapshot. Checked for the caller (the only agent this policy
 // allows); Cedar cannot map over context.agents to read every link's owner.

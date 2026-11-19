@@ -20,16 +20,17 @@ unless {
 
 // Delegation edges: wiki-agent acts_for group:staff on docs.read; no may_delegate edges.
 @id("no-acts-for-edge")
-forbid (principal, action, resource)
-when { context has first_agent }
+forbid (principal is Agent, action, resource)
 unless {
-  context has origin && context.first_agent == Agent::"wiki-agent" &&
+  context has origin && principal == Agent::"wiki-agent" &&
   context.origin in Group::"staff" && action == Action::"docs.read"
 };
 
+// No may_delegate edges: an agent caller must be the chain's only agent, so it is also the
+// agent the human handed the work to (the acts_for edge above is checked on the caller).
 @id("no-may-delegate-edge")
-forbid (principal, action, resource)
-when { !context.hops.isEmpty() };
+forbid (principal is Agent, action, resource)
+unless { [principal].containsAll(context.agents) };
 
 // Deny no-salary-pages (grant_to "*": every link).
 @id("no-salary-pages")

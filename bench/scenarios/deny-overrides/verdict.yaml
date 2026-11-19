@@ -1,12 +1,12 @@
 # bench/scenarios/deny-overrides/verdict.yaml
 openapl: native
 cedar:
-  grade: native
+  grade: workaround
   why: >-
-    Forbid overrides permit in Cedar. Denies on any link use the set of agent links
-    (context.agents.contains) and the origin's group parents. The router->transfer edge reads
-    the precomputed context.hops, but no case's decision depends on it.
-  lines: ["cedar/policies.cedar:40-55"]
+    The denies themselves are native: forbid overrides permit, and a deny on an intermediary
+    is context.agents.contains (the set of agent links). But the three-link case's edges read
+    the precomputed first_agent and hops, so under R7 the translation is a workaround.
+  lines: ["cedar/policies.cedar:23-38", "cedar/policies.cedar:42-55"]
 rego:
   grade: native
   why: "`some link in chain` deny rules; ALLOW requires `not denied`."

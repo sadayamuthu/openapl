@@ -44,6 +44,16 @@ def row(scenario: Scenario, case: Case, got: str | None, reasons: list[str],
             "ok": ok, "reasons": reasons, "error": error, "unsupported": unsupported}
 
 
+def recorded_tools(engine: str, wrapper: str) -> dict:
+    """The engine's entry in bench/results/env.json `tools` (written by bench/tools.sh)."""
+    path = Path(__file__).resolve().parent / "results" / "env.json"
+    env = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    entry = (env.get("tools") or {}).get(engine)
+    if entry is None:
+        return {"wrapper": wrapper, "error": "no tools entry in env.json; run bench/tools.sh"}
+    return {**entry, "wrapper": wrapper}
+
+
 def main(engine: str, script: str, run, argv: list[str] | None, tools: dict) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)

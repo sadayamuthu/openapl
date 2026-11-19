@@ -2,7 +2,11 @@
   "command": "python bench/run_rego.py --out bench/results/rego.json",
   "engine": "rego",
   "tool": {
-    "cli": "opa 1.22.4 (static)",
+    "version": "1.22.4",
+    "image": "openpolicyagent/opa:1.22.4-static",
+    "image_id": "sha256:68eabc0600f7c18375e1334f8b17be086ce10efb979541b214285e71fed7c34d",
+    "repo_digest": "openpolicyagent/opa@sha256:12cecac5a174368f7d3f09d3a19d040ebe0c91d576e520335ae7a985a26e39d3",
+    "wrapper_image": "openpolicyagent/opa@sha256:12cecac5a174368f7d3f09d3a19d040ebe0c91d576e520335ae7a985a26e39d3",
     "wrapper": "bench/bin/opa"
   },
   "total": 60,

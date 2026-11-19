@@ -52,16 +52,17 @@ unless {
   action == Action::"payments.pay" && resource.path like "payment/*"
 };
 
-// Delegation edges: both agents act_for group:finance on payments.pay; no may_delegate.
+// Delegation edges: both agents act_for group:finance on payments.pay.
 @id("no-acts-for-edge")
-forbid (principal, action, resource)
-when { context has first_agent }
+forbid (principal is Agent, action, resource)
 unless {
   context has origin &&
-  [Agent::"payments-agent", Agent::"other-agent"].contains(context.first_agent) &&
+  [Agent::"payments-agent", Agent::"other-agent"].contains(principal) &&
   context.origin in Group::"finance" && action == Action::"payments.pay"
 };
 
+// No may_delegate edges: an agent caller must be the chain's only agent, so it is also the
+// agent the human handed the work to (the acts_for edge above is checked on the caller).
 @id("no-may-delegate-edge")
-forbid (principal, action, resource)
-when { !context.hops.isEmpty() };
+forbid (principal is Agent, action, resource)
+unless { [principal].containsAll(context.agents) };

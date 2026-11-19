@@ -24,10 +24,15 @@ Precomputed (OpenAPL semantics Cedar cannot compute from the request):
   context.derived.<k>      string templates over attributes from the scenario's
                            cedar/derived.json (no string concatenation in Cedar)
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from common import Case
 from openapl.approvals import attributes_hash
+
+
+# The precomputed fields, by the name a policy reads (context.<name>, or an approval item's
+# `expired`). A translation that reads none of them can be graded `native` (R7).
+PRECOMPUTED = ("first_agent", "hops", "depth", "attributes_hash", "expired", "derived")
 
 
 @dataclass(frozen=True)
@@ -128,3 +133,14 @@ def to_cedar(case: Case, derived: dict[str, str] | None = None) -> CedarRequest:
         context=context,
         entities=entities,
     )
+
+
+def neutralise(req: CedarRequest) -> CedarRequest:
+    """The same request with every precomputed field removed or set to junk, for the
+    counterfactual check that a `native` translation does not depend on any of them."""
+    ctx = {k: v for k, v in req.context.items() if k not in ("first_agent", "derived")}
+    ctx["hops"] = ["neutralised>neutralised"]
+    ctx["depth"] = 99
+    ctx["attributes_hash"] = "0" * 64
+    ctx["approvals"] = [{**a, "expired": True} for a in ctx["approvals"]]
+    return replace(req, context=ctx)

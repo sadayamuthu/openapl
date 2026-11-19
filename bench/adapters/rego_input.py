@@ -6,6 +6,7 @@ claims verbatim, and every other request field as given. Absent optional fields 
 from common import Case
 
 _OPTIONAL = ("purpose", "task_id", "iat", "directory")
+PRECOMPUTED: tuple[str, ...] = ()  # nothing is computed outside OPA
 
 
 def to_rego(case: Case) -> dict:

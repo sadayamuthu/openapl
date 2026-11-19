@@ -2,7 +2,15 @@
   "command": "python bench/run_cedar.py --out bench/results/cedar.json",
   "engine": "cedar",
   "tool": {
-    "cli": "cedar-policy-cli 4.15.0",
+    "version": "cedar-policy-cli 4.15.0",
+    "image": "openapl-bench/cedar:4.15.0",
+    "image_id": "sha256:63bea5c76c485c62f9811b414bbad7005faa28caf707ffa742e04ba3b37f5f46",
+    "build": "bench/tools/cedar.Dockerfile",
+    "base_images": [
+      "rust:1.89-slim-bookworm@sha256:d7fc7de78bb8c1469933aeecbf801314d30d7d6e9f0578bba4cfa285bfa37fe6",
+      "debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc"
+    ],
+    "install": "cargo install cedar-policy-cli --version 4.15.0 --locked",
     "wrapper": "bench/bin/cedar"
   },
   "total": 60,
@@ -17,8 +25,8 @@
       "got": "ALLOW",
       "ok": true,
       "reasons": [
-        "needs-approval:payment-small",
-        "payment-small (approved)"
+        "payment-small (approved)",
+        "needs-approval:payment-small"
       ],
       "error": null,
       "unsupported": null
@@ -30,8 +38,8 @@
       "got": "ALLOW",
       "ok": true,
       "reasons": [
-        "payment-small (approved)",
-        "needs-approval:payment-small"
+        "needs-approval:payment-small",
+        "payment-small (approved)"
       ],
       "error": null,
       "unsupported": null
@@ -595,8 +603,8 @@
       "got": "DENY",
       "ok": true,
       "reasons": [
-        "origin-has-no-grant",
-        "no-acts-for-edge"
+        "no-acts-for-edge",
+        "origin-has-no-grant"
       ],
       "error": null,
       "unsupported": null

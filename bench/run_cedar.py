@@ -16,17 +16,18 @@ from pathlib import Path
 BENCH = Path(__file__).resolve().parent
 sys.path.insert(0, str(BENCH))
 
-from adapters.cedar_input import to_cedar  # noqa: E402
+from adapters.cedar_input import neutralise as neutralise_request, to_cedar  # noqa: E402
 from common import Scenario  # noqa: E402
-from engine_common import call, main as engine_main, row, unsupported_cases  # noqa: E402
+from engine_common import (  # noqa: E402
+    call, main as engine_main, recorded_tools, row, unsupported_cases)
 
 CLI = str(BENCH / "bin" / "cedar")
 FILES = ("policies.cedar", "schema.cedarschema", "entities.json")
 APPROVAL_PREFIX = "needs-approval:"
-TOOL = {"cli": "cedar-policy-cli 4.15.0", "wrapper": "bench/bin/cedar"}
 
 
-def parse(code: int, out: str, err: str) -> tuple[str | None, list[str], str | None]:
+def parse(code: int, out: str, err: str, approval_mapping: bool = True
+          ) -> tuple[str | None, list[str], str | None]:
     """-> (decision, determining policy ids + evaluation errors, error)."""
     lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
     if code not in (0, 2) or not lines or lines[0] not in ("ALLOW", "DENY"):
@@ -40,12 +41,14 @@ def parse(code: int, out: str, err: str) -> tuple[str | None, list[str], str | N
     if eval_errors or err.strip():
         return None, policies + eval_errors, "; ".join(eval_errors) or err.strip()
     decision = lines[0]
-    if decision == "ALLOW" and policies and all(p.startswith(APPROVAL_PREFIX) for p in policies):
+    if approval_mapping and decision == "ALLOW" and policies and all(p.startswith(APPROVAL_PREFIX) for p in policies):
         decision = "REQUIRE_APPROVAL"
     return decision, policies, None
 
 
-def run(scenarios: list[Scenario]) -> list[dict]:
+def run(scenarios: list[Scenario], neutralise: bool = False) -> list[dict]:
+    """neutralise=True is the counterfactual check (tests only): every precomputed context
+    field is removed or set to junk and the REQUIRE_APPROVAL mapping is off."""
     rows = []
     for s in scenarios:
         src = Path(s.path) / "cedar"
@@ -73,18 +76,21 @@ def run(scenarios: list[Scenario]) -> list[dict]:
                     rows.append(row(s, c, None, [], setup_error))
                     continue
                 req = to_cedar(c, derived)
+                if neutralise:
+                    req = neutralise_request(req)
                 (work / "case.entities.json").write_text(json.dumps(static + req.entities))
                 (work / "case.request.json").write_text(json.dumps(req.request_json()))
                 got, reasons, error = parse(*call(
                     [CLI, "authorize", "-v", "--schema", "schema.cedarschema",
                      "--policies", "policies.cedar", "--entities", "case.entities.json",
-                     "--request-json", "case.request.json"], work))
+                     "--request-json", "case.request.json"], work), not neutralise)
                 rows.append(row(s, c, got, reasons, error))
     return rows
 
 
 def main(argv: list[str] | None = None) -> int:
-    return engine_main("cedar", "bench/run_cedar.py", run, argv, TOOL)
+    return engine_main("cedar", "bench/run_cedar.py", run, argv,
+                       recorded_tools("cedar", "bench/bin/cedar"))
 
 
 if __name__ == "__main__":

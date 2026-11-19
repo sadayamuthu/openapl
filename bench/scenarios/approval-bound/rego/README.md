@@ -6,7 +6,7 @@ The input is built by `bench/adapters/rego_input.py`: the request as given, with
 
 ## Computed outside Rego
 
-- nothing. Chain order, edges, depth, claim normalisation, the attributes hash and the three-valued decision are all computed in the policy.
+Nothing. Chain order, edges, depth, claim normalisation, the attributes hash and the three-valued decision are all computed in the policy.
 
 ## Notes
 

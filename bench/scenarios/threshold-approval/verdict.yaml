@@ -3,10 +3,11 @@ openapl: native
 cedar:
   grade: workaround
   why: >-
-    The amount threshold and the absent-amount fail-closed case are native (`has` guards), but
-    Cedar decides only ALLOW/DENY: REQUIRE_APPROVAL is encoded as a reason, a permit whose @id
-    starts with `needs-approval:`, which the runner maps to REQUIRE_APPROVAL.
-  lines: ["cedar/policies.cedar:12-44"]
+    The amount threshold and the absent-amount DENY are native (`has` guards), but Cedar
+    decides only ALLOW/DENY: REQUIRE_APPROVAL is a reason, a permit whose @id starts with
+    `needs-approval:`, mapped by the runner. The approved path reads the precomputed
+    attributes_hash and `expired`.
+  lines: ["cedar/policies.cedar:12-43"]
 rego:
   grade: native
   why: >-

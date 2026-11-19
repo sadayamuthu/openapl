@@ -19,15 +19,16 @@ unless {
   action == Action::"ops.restart" && resource.path like "service/*"
 };
 
-// Delegation edges: ops-agent acts_for group:sre on ops.restart; no may_delegate.
+// Delegation edges: ops-agent acts_for group:sre on ops.restart.
 @id("no-acts-for-edge")
-forbid (principal, action, resource)
-when { context has first_agent }
+forbid (principal is Agent, action, resource)
 unless {
-  context has origin && context.first_agent == Agent::"ops-agent" &&
+  context has origin && principal == Agent::"ops-agent" &&
   context.origin in Group::"sre" && action == Action::"ops.restart"
 };
 
+// No may_delegate edges: an agent caller must be the chain's only agent, so it is also the
+// agent the human handed the work to (the acts_for edge above is checked on the caller).
 @id("no-may-delegate-edge")
-forbid (principal, action, resource)
-when { !context.hops.isEmpty() };
+forbid (principal is Agent, action, resource)
+unless { [principal].containsAll(context.agents) };

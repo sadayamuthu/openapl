@@ -16,11 +16,11 @@ sys.path.insert(0, str(BENCH))
 
 from adapters.rego_input import to_rego  # noqa: E402
 from common import Scenario  # noqa: E402
-from engine_common import DECISIONS, call, main as engine_main, row, unsupported_cases  # noqa: E402
+from engine_common import (  # noqa: E402
+    DECISIONS, call, main as engine_main, recorded_tools, row, unsupported_cases)
 
 CLI = str(BENCH / "bin" / "opa")
 QUERY = "data.openapl.decision"
-TOOL = {"cli": "opa 1.22.4 (static)", "wrapper": "bench/bin/opa"}
 
 
 def parse(code: int, out: str, err: str) -> tuple[str | None, str | None]:
@@ -60,7 +60,8 @@ def run(scenarios: list[Scenario]) -> list[dict]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    return engine_main("rego", "bench/run_rego.py", run, argv, TOOL)
+    return engine_main("rego", "bench/run_rego.py", run, argv,
+                       recorded_tools("opa", "bench/bin/opa"))
 
 
 if __name__ == "__main__":

@@ -31,16 +31,17 @@ unless {
   action in Action::"report.*" && resource.path like "report/*"
 };
 
-// Delegation edges: report-agent acts_for group:analysts on run and export; no may_delegate.
+// Delegation edges: report-agent acts_for group:analysts on run and export.
 @id("no-acts-for-edge")
-forbid (principal, action, resource)
-when { context has first_agent }
+forbid (principal is Agent, action, resource)
 unless {
-  context has origin && context.first_agent == Agent::"report-agent" &&
+  context has origin && principal == Agent::"report-agent" &&
   context.origin in Group::"analysts" &&
   action in [Action::"report.run", Action::"report.export"]
 };
 
+// No may_delegate edges: an agent caller must be the chain's only agent, so it is also the
+// agent the human handed the work to (the acts_for edge above is checked on the caller).
 @id("no-may-delegate-edge")
-forbid (principal, action, resource)
-when { !context.hops.isEmpty() };
+forbid (principal is Agent, action, resource)
+unless { [principal].containsAll(context.agents) };

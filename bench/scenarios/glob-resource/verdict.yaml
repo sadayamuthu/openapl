@@ -2,8 +2,9 @@
 openapl: native
 cedar:
   grade: native
-  why: "`like` with `*` matches across `/`; the specific deny is a forbid."
-  lines: ["cedar/policies.cedar:5-11", "cedar/policies.cedar:35-37"]
+  why: >-
+    `like` with `*` matches across `/`; the specific deny is a forbid. No precomputed field.
+  lines: ["cedar/policies.cedar:5-11", "cedar/policies.cedar:36-38"]
 rego:
   grade: native
   why: "glob.match with null delimiters lets `*` cross `/`; the deny is a rule."

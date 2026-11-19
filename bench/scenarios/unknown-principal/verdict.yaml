@@ -1,12 +1,12 @@
 # bench/scenarios/unknown-principal/verdict.yaml
 openapl: native
 cedar:
-  grade: native
+  grade: workaround
   why: >-
-    The policy's principals are a literal set that must containsAll(context.agents), the set
-    of the chain's agent links. The relay edge reads the precomputed context.hops, but no
-    case's decision depends on it.
-  lines: ["cedar/policies.cedar:16-20"]
+    The unknown-principal check is native (the literal principal set containsAll
+    context.agents), but the three- and four-link cases' edges read the precomputed
+    first_agent and hops.
+  lines: ["cedar/policies.cedar:16-37"]
 rego:
   grade: native
   why: "`some link in chain` with `not link.id in principals`."

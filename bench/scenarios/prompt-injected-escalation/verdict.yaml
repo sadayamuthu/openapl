@@ -3,10 +3,10 @@ openapl: native
 cedar:
   grade: native
   why: >-
-    The acts_for forbid lists only tickets.read, so an injected action is denied by the edge
-    although both grants (the action group tickets.*) allow it. The glob is an enumerated
-    action group in the schema: a new tickets action must be added there.
-  lines: ["cedar/policies.cedar:5-11", "cedar/policies.cedar:23-29"]
+    The acts_for forbid on the caller lists only tickets.read, so an injected action is
+    denied by the edge although both grants (action group tickets.*) allow it. The glob is an
+    enumerated schema action group. No precomputed field.
+  lines: ["cedar/policies.cedar:5-11", "cedar/policies.cedar:23-34"]
 rego:
   grade: native
   why: "The acts_for edge rule requires input.action == tickets.read; grants use glob tickets.*."

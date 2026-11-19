@@ -3,10 +3,10 @@ openapl: native
 cedar:
   grade: native
   why: >-
-    Group and Role are entity parents of the User (`in Group::"sre"`, `in Role::"oncall"`).
-    Building them from the claims, including a single-string claim as one parent, is the
-    standard Cedar entity construction done by the adapter (disclosed in the README).
-  lines: ["cedar/policies.cedar:10-29"]
+    Group and Role are entity parents of the User (`in Group::"sre"`, `in Role::"oncall"`),
+    built from the claims (a single-string claim is one parent: standard entity construction,
+    disclosed in the README); the edge is checked on the caller. No precomputed field.
+  lines: ["cedar/policies.cedar:10-34"]
 rego:
   grade: native
   why: "claim_values reads a list or a single string (is_array / is_string) for groups and roles."

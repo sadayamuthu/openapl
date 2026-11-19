@@ -2,7 +2,9 @@
 openapl: native
 cedar:
   grade: native
-  why: "context.purpose (the verified claim) is separate from context.attributes (tool arguments)."
+  why: >-
+    context.purpose (the verified claim) is separate from context.attributes (tool
+    arguments). No precomputed field.
   lines: ["cedar/policies.cedar:6-11"]
 rego:
   grade: native

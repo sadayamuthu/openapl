@@ -3,11 +3,12 @@ openapl: native
 cedar:
   grade: workaround
   why: >-
-    Cedar has no hash function, no existential over a set with a comparison, and no third
-    decision. attributes_hash and each item's `expired` flag (exp < now) are computed outside
-    Cedar so a whole-record `contains` can bind the item; REQUIRE_APPROVAL is a reason (the
-    runner reads ALLOW determined only by a `needs-approval:` permit as REQUIRE_APPROVAL).
-  lines: ["cedar/policies.cedar:22-46"]
+    Cedar has no hash function, no search of a set with a comparison, and no third decision.
+    It reads attributes_hash and each item's `expired` flag (exp < now), both computed outside
+    Cedar, so a whole-record `contains` can bind the item; REQUIRE_APPROVAL is a reason (the
+    runner reads an ALLOW determined only by a `needs-approval:` permit as REQUIRE_APPROVAL).
+    The edges read no precomputed field (two-link encoding on the caller).
+  lines: ["cedar/policies.cedar:22-45"]
 rego:
   grade: native
   why: >-

@@ -3,10 +3,10 @@ openapl: native
 cedar:
   grade: native
   why: >-
-    The caller's owner attribute is checked against context.active_owners (the snapshot).
-    Cedar cannot map over every chain link's owner, but this policy has no may_delegate edge,
-    so the caller is the only agent any allowed chain can contain.
-  lines: ["cedar/policies.cedar:37-39"]
+    The caller's owner attribute is checked against context.active_owners (the snapshot);
+    the caller is the chain's only agent (no may_delegate), so this covers every agent link.
+    No precomputed field.
+  lines: ["cedar/policies.cedar:32-40"]
 rego:
   grade: native
   why: "Every agent link's owner is looked up and checked against input.directory.active."

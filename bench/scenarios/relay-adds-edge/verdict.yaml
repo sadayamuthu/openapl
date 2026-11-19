@@ -4,9 +4,11 @@ cedar:
   grade: workaround
   why: >-
     Cedar has no string concatenation, so "order/${request.order_id}" is computed outside
-    Cedar (cedar/derived.json -> context.derived.order_resource); the relay edge reads the
-    precomputed context.hops; the otherwise path is a `needs-approval:` reason.
-  lines: ["cedar/policies.cedar:10-19", "cedar/policies.cedar:75-80"]
+    Cedar (cedar/derived.json -> context.derived.order_resource). The edges read the
+    precomputed first_agent (direct-chain-has-no-edge depends on it) and hops, max_depth reads
+    depth, the approved path reads attributes_hash and `expired`, and the otherwise path is a
+    `needs-approval:` reason.
+  lines: ["cedar/policies.cedar:10-31", "cedar/policies.cedar:66-85"]
 rego:
   grade: native
   why: >-
