@@ -1,4 +1,5 @@
 # sidecar/src/openapl_sidecar/bindings.py
+import math
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -73,7 +74,8 @@ def load_bindings(path: str | None) -> Bindings:
         raise BindingError(f"cannot read bindings file {path}: {e}") from e
     if not isinstance(doc, dict):
         raise BindingError("bindings file must be a mapping")
-    if doc.get("version") != 1:
+    v = doc.get("version")
+    if type(v) is not int or v != 1:
         raise BindingError("bindings file requires version: 1")
     unknown = set(doc) - _TOP_KEYS
     if unknown:
@@ -130,7 +132,7 @@ def resolve_tool(b: Bindings, wire_name: str) -> tuple[str | None, str]:
     split = b.prefix_mode == "always" or (b.prefix_mode == "conditional" and len(b.targets) > 1)
     if split:
         prefix, sep, tool = wire_name.partition("_")
-        if not sep or prefix not in b.targets:
+        if not sep or not tool or prefix not in b.targets:
             raise BindingError(f"cannot resolve target for tool {wire_name!r}")
         return prefix, tool
     if b.prefix_mode == "never":
@@ -164,6 +166,8 @@ def _value(ref: str, target: str | None, tool: str, args: dict, token: str) -> A
         cur = cur[part]
     if cur is None or not isinstance(cur, (str, int, float, bool)):
         raise BindingError(f"unbound placeholder {token}")
+    if isinstance(cur, float) and not math.isfinite(cur):
+        raise BindingError(f"unbound placeholder {token}: non-finite number")
     return cur
 
 

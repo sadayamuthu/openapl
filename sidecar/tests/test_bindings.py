@@ -169,3 +169,23 @@ def test_attribute_non_string_template_rejected(tmp_path):
 def test_missing_file(tmp_path):
     with pytest.raises(BindingError):
         load_bindings(str(tmp_path / "nope.yaml"))
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+@pytest.mark.parametrize("tmpl", ["${args.n}", "o-${args.n}"])
+def test_non_finite_number_rejected(tmp_path, bad, tmpl):
+    b = make(tmp_path, f'version: 1\ntools:\n  - {{tool: t, action: a, resource: r, attributes: {{x: "{tmpl}"}}}}\n')
+    with pytest.raises(BindingError, match="non-finite"):
+        map_call(b, "t", {"n": bad})
+
+
+def test_empty_tool_name_rejected(tmp_path):
+    b = make(tmp_path, "version: 1\ntargets: [payments, crm]\n")
+    with pytest.raises(BindingError):
+        resolve_tool(b, "payments_")
+
+
+@pytest.mark.parametrize("v", ["true", "1.0"])
+def test_version_must_be_int_one(tmp_path, v):
+    with pytest.raises(BindingError, match="version"):
+        make(tmp_path, f"version: {v}\n")
