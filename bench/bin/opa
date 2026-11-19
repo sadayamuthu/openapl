@@ -1,6 +1,6 @@
 #!/bin/sh
 # bench/bin/opa
 # Runs the pinned OPA (official 1.22.4-static image, by digest) on files in the current
-# directory, mounted read-only. Paths given to the CLI must be relative to $PWD.
-exec docker run --rm -i --network none -v "$PWD":/work:ro -w /work \
+# directory, mounted read-only, as the caller uid (CI temp dirs are 0700). Paths given to the CLI must be relative to $PWD.
+exec docker run --rm -i --network none --user "$(id -u):$(id -g)" -v "$PWD":/work:ro -w /work \
   "${OPENAPL_BENCH_OPA_IMAGE:-openpolicyagent/opa@sha256:12cecac5a174368f7d3f09d3a19d040ebe0c91d576e520335ae7a985a26e39d3}" "$@"
