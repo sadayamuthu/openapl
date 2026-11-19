@@ -147,7 +147,11 @@ def gateway_env() -> dict:
             "{{.Server.Version}}"), "docker_context": _sh("docker", "context", "show"),
             "docker_os": _sh("docker", "info", "--format", "{{.OperatingSystem}} {{.Architecture}} "
                              "cpus={{.NCPU}} mem={{.MemTotal}}"), "images": images,
-            "ports": PORTS, "compose": "bench/gateway/compose.bench.yaml"}
+            "ports": PORTS, "compose": "bench/gateway/compose.bench.yaml",
+            "git_sha": _sh("git", "-C", str(REPO), "rev-parse", "HEAD"),
+            "git_dirty": bool(_sh("git", "-C", str(REPO), "status", "--porcelain", "--",
+                                  "sdk/src", "sidecar", "demo", "bench/gateway",
+                                  "bench/gateway_latency.py"))}
 
 
 def main() -> int:

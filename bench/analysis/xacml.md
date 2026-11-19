@@ -14,9 +14,7 @@ placing the given data into attributes, with nothing derived. Placing data means
 chain's ends, the claims, the tool arguments, the clock and the directory snapshot as given. If
 the PEP or a PIP must compute anything from the request, the scenario is `workaround`, and `why`
 names exactly what is computed. Examples are the chain's order flattened into pairs or indexed
-positions, a depth or a hash. Grades are relative to the suite's cases. Each scenario is encoded
-in full (every edge, deny and condition of its OpenAPL policy), the way the Cedar and Rego
-translations were.
+positions, a depth or a hash. Each scenario's OpenAPL policy is encoded in full (every edge, deny and condition, including paths no case exercises); a grade is about that encoding. The cases test the encoding; they do not limit it. This is the way the Cedar and Rego translations were encoded.
 
 ## Common encoding
 

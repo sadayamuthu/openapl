@@ -37,7 +37,10 @@ def fx(tmp_path):
                        "rego": [True] * 4}.items():
         (res / f"{name}.json").write_text(json.dumps(_engine(rows)))
     point = lambda p, e, p99: {"point": p, "n": 20000, "p50_us": 1.5, "p99_us": p99,  # noqa: E731
-                               "load_ms": 3.0, "principals": 1, "entitlements": e}
+                               "load_ms": 3.0, "principals": 1, "entitlements": e,
+                               "p95_us": 2.0, "max_us": 9.0, "mean_us": 1.7, "warmup": 1000,
+                               "request_pool": 2000, "seed": 1,
+                               "decision_mix": {"ALLOW": 1, "DENY": 1}}
     (res / "latency.json").write_text(json.dumps({
         "points": [point("10x100", 100, 600.0), point("100x1000", 1000, 2300.0)],
         "target": {"point": "100x1000", "p99_us": 2300.0, "met": True}}))
@@ -68,7 +71,11 @@ def test_key_paths(fx):
     assert s["latency"]["target"] == {"point": "100x1000", "p99_us": 2300.0, "met": True}
     assert s["latency"]["grid"]["100x1000"] == {
         "p50_us": 1.5, "p99_us": 2300.0, "load_ms": 3.0, "n": 20000,
-        "principals": 1, "entitlements": 1000}
+        "principals": 1, "entitlements": 1000, "p95_us": 2.0, "max_us": 9.0, "mean_us": 1.7,
+        "decision_mix": {"ALLOW": 1, "DENY": 1}, "warmup": 1000, "request_pool": 2000,
+        "seed": 1, "met_5ms": True}
+    assert s["latency"]["grid"]["10x100"]["met_5ms"] is True
+    assert "not evidence" in s["grades"]["openapl_note"]
     assert s["gateway"]["openapl"]["p99_us"] == 3500.0
     assert s["gateway"]["baseline"]["p50_us"] == 1400.0
     assert s["gateway"]["delta"]["batch_median_spread_us"] == 249.0
@@ -88,4 +95,11 @@ def test_missing_results_fails(fx):
     sc, res = fx
     (res / "gateway.json").unlink()
     with pytest.raises(FileNotFoundError):
+        analyze(res, sc)
+
+
+def test_case_count_mismatch_fails(fx):
+    sc, res = fx
+    (res / "rego.json").write_text(json.dumps(_engine([True] * 3)))
+    with pytest.raises(ValueError, match="rego"):
         analyze(res, sc)

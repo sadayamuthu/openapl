@@ -54,7 +54,8 @@
       "workaround": 7,
       "not_expressible": 0,
       "unknown": 0
-    }
+    },
+    "openapl_note": "openapl's grade is native by construction: the suite and its expected decisions were written from OpenAPL's SPEC. Rego ties it on this suite. This is not evidence of an expressiveness advantage over Rego."
   },
   "latency": {
     "target": {
@@ -69,7 +70,19 @@
         "load_ms": 26.252959,
         "n": 20000,
         "principals": 10,
-        "entitlements": 100
+        "entitlements": 100,
+        "p95_us": 472.417,
+        "max_us": 2414.25,
+        "mean_us": 265.31617389999997,
+        "decision_mix": {
+          "ALLOW": 8810,
+          "DENY": 8170,
+          "REQUIRE_APPROVAL": 3020
+        },
+        "warmup": 1000,
+        "request_pool": 2000,
+        "seed": 1,
+        "met_5ms": true
       },
       "100x1000": {
         "p50_us": 1709.417,
@@ -77,7 +90,19 @@
         "load_ms": 230.695583,
         "n": 20000,
         "principals": 100,
-        "entitlements": 1000
+        "entitlements": 1000,
+        "p95_us": 2050.5,
+        "max_us": 19274.542,
+        "mean_us": 1747.5667356499998,
+        "decision_mix": {
+          "ALLOW": 9130,
+          "DENY": 7980,
+          "REQUIRE_APPROVAL": 2890
+        },
+        "warmup": 1000,
+        "request_pool": 2000,
+        "seed": 1,
+        "met_5ms": true
       },
       "300x3000": {
         "p50_us": 4997.75,
@@ -85,7 +110,19 @@
         "load_ms": 731.072,
         "n": 20000,
         "principals": 300,
-        "entitlements": 3000
+        "entitlements": 3000,
+        "p95_us": 5971.25,
+        "max_us": 66737.458,
+        "mean_us": 5136.9183833,
+        "decision_mix": {
+          "ALLOW": 9080,
+          "DENY": 7970,
+          "REQUIRE_APPROVAL": 2950
+        },
+        "warmup": 1000,
+        "request_pool": 2000,
+        "seed": 1,
+        "met_5ms": false
       },
       "1000x10000": {
         "p50_us": 16876.0,
@@ -93,7 +130,19 @@
         "load_ms": 2499.380333,
         "n": 20000,
         "principals": 1000,
-        "entitlements": 10000
+        "entitlements": 10000,
+        "p95_us": 21756.625,
+        "max_us": 103419.541,
+        "mean_us": 17532.373375,
+        "decision_mix": {
+          "ALLOW": 8590,
+          "DENY": 8310,
+          "REQUIRE_APPROVAL": 3100
+        },
+        "warmup": 1000,
+        "request_pool": 2000,
+        "seed": 1,
+        "met_5ms": false
       }
     }
   },

@@ -17,7 +17,7 @@ that describe GAPL (the `gravitee.io/corpus/...` pages and others) were not used
 **Grading rule.** This is the same rule as for Cedar, Rego and XACML (ruling R7). A scenario is
 `native` when a GAPL policy decides every case from a request that carries the given data
 unchanged. If anything must be computed outside the engine, the scenario is `workaround`, and
-`why` names what. Grades are relative to the suite's cases. Each scenario is encoded in full.
+`why` names what. Each scenario's OpenAPL policy is encoded in full (every edge, deny and condition, including paths no case exercises); a grade is about that encoding. The cases test the encoding; they do not limit it. This is the way the Cedar and Rego translations were encoded.
 
 ## What the documentation establishes
 

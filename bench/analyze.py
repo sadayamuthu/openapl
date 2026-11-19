@@ -16,7 +16,13 @@ import yaml
 BENCH = Path(__file__).resolve().parent
 ENGINES = ("openapl", "cedar", "rego")
 GRADED = ("openapl", "cedar", "rego", "xacml", "gapl")
+TARGET_US = 5000.0  # design target, bench/latency.py TARGET_US
 GRADES = ("native", "workaround", "not_expressible", "unknown")
+
+
+OPENAPL_NOTE = ("openapl's grade is native by construction: the suite and its expected decisions "
+                "were written from OpenAPL's SPEC. Rego ties it on this suite. This is not "
+                "evidence of an expressiveness advantage over Rego.")
 
 
 def _load(path: Path) -> dict:
@@ -46,12 +52,24 @@ def analyze(results: Path, scenarios: Path) -> dict:
     engines = {}
     for e in ENGINES:
         rows = _load(results / f"{e}.json")["rows"]
+        counts = {"matched": sum(r["ok"] is True for r in rows),
+                  "mismatched": sum(r["ok"] is False for r in rows),
+                  "unsupported": sum(r["ok"] is None for r in rows)}
+        if sum(counts.values()) != suite["cases"]:
+            raise ValueError(f"{e}: matched+mismatched+unsupported = {sum(counts.values())} "
+                             f"but the suite has {suite['cases']} cases")
         engines[e] = {"matched": sum(r["ok"] is True for r in rows),
                       "mismatched": sum(r["ok"] is False for r in rows),
                       "unsupported": sum(r["ok"] is None for r in rows)}
     lat = _load(results / "latency.json")
-    grid = {p["point"]: {k: p[k] for k in ("p50_us", "p99_us", "load_ms", "n", "principals",
-                                           "entitlements")} for p in lat["points"]}
+    target_us = TARGET_US
+    grid = {p["point"]: {**{k: p[k] for k in ("p50_us", "p99_us", "load_ms", "n", "principals",
+                                              "entitlements")},
+                         **{k: p[k] for k in ("p95_us", "max_us", "mean_us", "decision_mix",
+                                              "warmup", "request_pool")},
+                         "seed": p.get("seed", lat.get("seed")),
+                         "met_5ms": p["p99_us"] < target_us}
+            for p in lat["points"]}
     gw = _load(results / "gateway.json")
     gateway = {"openapl": {k: gw["openapl"][k] for k in ("p50_us", "p99_us", "n")},
                "baseline": {k: gw["baseline"][k] for k in ("p50_us", "p99_us", "n")},
@@ -59,6 +77,7 @@ def analyze(results: Path, scenarios: Path) -> dict:
                    "p50_us", "p99_us", "batch_median_spread_us", "batch_p99_spread_us",
                    "paired_batches")},
                "sidecar_decisions": {"count": gw["sidecar_decisions"]["count"]}}
+    grades["openapl_note"] = OPENAPL_NOTE
     return {"suite": suite, "engines": engines, "grades": grades,
             "latency": {"target": lat["target"], "grid": grid}, "gateway": gateway,
             "env": _load(results / "env.json")}

@@ -250,6 +250,10 @@ def generate(out_dir: str, *, principals: int, entitlements: int, denies: int, s
             a = rng.choice(deep or ns_agents[info["ns"]])
             q = req([human(info["group"]), {"id": a, "kind": "agent"}], info, rid, 10)
         else:  # deny-wrong-group
+            # TODO: misnamed. The origin human's group has no acts_for edge to the first agent
+            # (the denial is "no acts_for edge for this group"). Rename to deny-no-acts-for-edge
+            # at the next regeneration of latency.json; not renamed now so the recorded labels
+            # stay stable (see bench/README.md).
             info = rng.choice(cap_info)
             bad = [g for g in GROUPS if g not in ns_groups[info["ns"]]]
             a = rng.choice(info["agents"])[0]
