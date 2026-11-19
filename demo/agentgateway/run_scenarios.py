@@ -44,31 +44,63 @@ def parse_body(body: bytes):
         return None
 
 
+def ok_note(sc: dict, res, decision: str) -> str:
+    """For a 200: return a failure note unless there is a real result (no error, isError not true)."""
+    if decision in ("DENY", "REQUIRE_APPROVAL"):
+        return f"200 carried decision header {decision}"
+    if not isinstance(res, dict):
+        return "200 without a matching JSON-RPC result"
+    if "code" in res and "message" in res and "content" not in res and "tools" not in res:
+        return f"JSON-RPC error at 200: {res.get('message')}"
+    if "tool" in sc:
+        if res.get("isError") is True:
+            return "tool reported isError"
+        if "content" not in res:
+            return "tools/call result has no content"
+    elif not isinstance(res.get("tools"), list):
+        return "tools/list result has no tools list"
+    return ""
+
+
+def void_allowed(log_path: Path) -> bool:
+    """True if the decision log holds an ALLOW record for payments.void."""
+    if not log_path.exists():
+        return False
+    for line in log_path.read_text().splitlines():
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        if rec.get("decision") == "ALLOW" and rec.get("action") == "payments.void":
+            return True
+    return False
+
+
 def run_one(sc: dict, base_url: str, out_dir: str) -> dict:
-    """Returns {status, decision, reasons, note}."""
+    """Returns {status, decision, reasons, note, detail}; a non-empty note is a failure."""
     token = issuer.token_from_spec(out_dir, sc["token"]) if sc.get("token") else None
     c = McpClient(base_url, token)
     init = c.initialize()
     if init != 200:
-        return {"status": init, "decision": "", "reasons": [], "note": f"initialize failed ({init})"}
+        return {"status": init, "decision": "", "reasons": [], "note": "", "detail": f"initialize failed ({init})"}
     if "batch" in sc:
         payload = [{"jsonrpc": "2.0", "id": 100 + i, "method": "tools/call",
                     "params": {"name": b["tool"], "arguments": expand(b["args"])}}
                    for i, b in enumerate(sc["batch"])]
         status, body = c.post_raw(payload)
-        text = body.decode("utf-8", "replace")
-        executed = '"ok": true' in text or '\\"ok\\": true' in text or '"isError":false' in text.replace(" ", "")
-        return {"status": status, "decision": "", "reasons": [], "executed": executed,
-                "note": text[:120].replace("\n", " ")}
+        note = ""
+        if void_allowed(Path(out_dir) / "decisions.jsonl"):
+            note = "decision log holds an ALLOW for payments.void"
+        return {"status": status, "decision": "", "reasons": [], "note": note,
+                "detail": body.decode("utf-8", "replace")[:60].replace("\n", " ")}
     if "tool" in sc:
         status, res, hdrs = c.call(sc["tool"], expand(sc.get("args", {})))
     else:
         status, res, hdrs = c.request(sc["method"])
     reasons = res.get("reasons", []) if isinstance(res, dict) and status == 403 else []
     decision = hdrs.get("x-openapl-decision", "")
-    if status == 200 and isinstance(res, dict) and res.get("isError"):
-        return {"status": status, "decision": decision, "reasons": [], "note": "tool reported isError"}
-    return {"status": status, "decision": decision, "reasons": reasons, "note": ""}
+    note = ok_note(sc, res, decision) if status == 200 else ""
+    return {"status": status, "decision": decision, "reasons": reasons, "note": note, "detail": ""}
 
 
 def check(sc: dict, got: dict) -> list[str]:
@@ -79,13 +111,13 @@ def check(sc: dict, got: dict) -> list[str]:
         errs.append(f"status {got['status']} not in {allowed}")
     if got["status"] == 200 and 200 not in allowed:
         errs.append("allowed when it must not be")
+    if got.get("note"):
+        errs.append(got["note"])
     if "decision" in exp and got["decision"] != exp["decision"]:
         errs.append(f"decision {got['decision']!r} != {exp['decision']!r}")
     for r in exp.get("reasons_include", []):
         if not any(r in x for x in got["reasons"]):
             errs.append(f"reason missing: {r!r}")
-    if exp.get("never_executed") and got.get("executed"):
-        errs.append("batch executed a tool")
     return errs
 
 
@@ -110,12 +142,16 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     rows = []
     failures = 0
-    for sc in issuer.load_scenarios(a.scenarios):
+    scenarios = issuer.load_scenarios(a.scenarios)
+    if not scenarios:
+        print("no scenarios defined", file=sys.stderr)
+        return 1
+    for sc in scenarios:
         try:
             got = run_one(sc, a.base_url, a.out)
             errs = check(sc, got)
         except Exception as e:  # a scenario must fail, never crash the runner
-            got, errs = {"status": 0, "decision": "", "reasons": [], "note": str(e)}, [f"error: {e}"]
+            got, errs = {"status": 0, "decision": "", "reasons": [], "note": str(e), "detail": ""}, [f"error: {e}"]
         failures += bool(errs)
         exp = sc["expect"]
         exps = "/".join(map(str, exp["status"])) if isinstance(exp["status"], list) else str(exp["status"])
@@ -123,9 +159,9 @@ def main(argv: list[str] | None = None) -> int:
             exps += " " + exp["decision"]
         gots = str(got["status"]) + (" " + got["decision"] if got["decision"] else "")
         rows.append((sc["id"], exps, gots, got["decision"] or "-", "; ".join(got["reasons"]) or "-",
-                     "PASS" if not errs else "FAIL: " + "; ".join(errs)))
-    headers = ("id", "expected", "got", "decision header", "reasons", "result")
-    widths = [max(len(str(r[i])) for r in [headers, *rows]) for i in range(6)]
+                     "PASS" if not errs else "FAIL: " + "; ".join(errs), got.get("detail", "") or "-"))
+    headers = ("id", "expected", "got", "decision header", "reasons", "result", "note")
+    widths = [max(len(str(r[i])) for r in [headers, *rows]) for i in range(7)]
     print("\n== scenarios ==")
     for r in [headers, *rows]:
         print(" | ".join(str(x).ljust(w) for x, w in zip(r, widths)).rstrip())

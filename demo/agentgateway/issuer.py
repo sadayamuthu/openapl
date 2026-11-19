@@ -86,7 +86,7 @@ def token_from_spec(out_dir: str, spec: dict, now: int | None = None) -> str:
 
 def load_scenarios(path: str) -> list[dict]:
     with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f)["scenarios"]
+        return (yaml.safe_load(f) or {}).get("scenarios") or []
 
 
 def main(argv: list[str] | None = None) -> int:

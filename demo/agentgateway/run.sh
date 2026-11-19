@@ -9,7 +9,17 @@ if [ -z "$PY" ]; then
 fi
 
 cleanup() { docker compose down -v --remove-orphans >/dev/null 2>&1 || true; }
-trap cleanup EXIT
+# On failure, keep the container logs in out/ (uploaded by CI) before teardown.
+on_exit() {
+  rc=$?
+  if [ "$rc" -ne 0 ] && [ -d out ]; then docker compose logs --no-color > out/compose.log 2>&1 || true; fi
+  cleanup
+  exit "$rc"
+}
+trap on_exit EXIT
+
+# 0. tear down anything left by a killed run (port 3000, stale mounts)
+cleanup
 
 # 1. recreate out/ (0777: the sidecar runs as uid 10001). Containers on Linux may leave root-owned
 #    files in it, so fall back to deleting it from a throwaway container.

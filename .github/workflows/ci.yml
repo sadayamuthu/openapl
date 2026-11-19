@@ -88,4 +88,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: demo-out
-          path: demo/agentgateway/out/
+          path: |
+            demo/agentgateway/out/
+            !demo/agentgateway/out/private.pem
