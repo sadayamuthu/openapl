@@ -43,7 +43,8 @@ def test_explain_unknown_raises(ps):
 
 def test_explain_on_behalf_of(ps):
     assert explain(ps, "support-agent", on_behalf_of="group:support-staff").reach == (REACH,)
-    assert explain(ps, "support-agent", on_behalf_of="group:marketing").reach == ()
+    # a marketing member may also be in support-staff, so reach is reported (R11)
+    assert explain(ps, "support-agent", on_behalf_of="group:marketing").reach == (REACH,)
 
 
 def test_explain_on_behalf_of_ungranted_selector(ps):
@@ -123,10 +124,19 @@ def test_on_behalf_of_glob_and_overreport(tmp_path):
     assert [r.action for r in got] == ["payments.refund"]
 
 
-def test_on_behalf_of_requires_exact_who(tmp_path):
+def test_on_behalf_of_other_group_may_overlap(tmp_path):
+    # a member of group:h may also be in group:g, so reach is reported (R11)
     agents = {"a": ([], [("group:g", ["*"])])}
     ps = _ps(tmp_path, agents, [("a", "x.y"), ("group:h", "*")])
-    assert explain(ps, "a", on_behalf_of="group:h").reach == ()
+    assert [r.entitlement_id for r in explain(ps, "a", on_behalf_of="group:h").reach] == ["g0"]
+
+
+def test_on_behalf_of_user_requires_exact_user_who(tmp_path):
+    # a user is exactly one user, so another user's acts_for entry never applies
+    agents = {"a": ([], [("user:alice@x.com", ["*"])])}
+    ps = _ps(tmp_path, agents, [("a", "x.y"), ("'*'", "*")])
+    assert explain(ps, "a", on_behalf_of="user:bob@x.com").reach == ()
+    assert len(explain(ps, "a", on_behalf_of="user:alice@x.com").reach) == 2  # g0 and the * grant g1
 
 
 def _engine(ps, origin_claims, action="x.y"):
@@ -157,3 +167,17 @@ def test_on_behalf_of_user_ignores_other_users_acts_for(tmp_path):
     assert explain(ps, "a", on_behalf_of="user:alice").reach == ()
     assert [r.entitlement_id for r in explain(ps, "a", on_behalf_of="user:bob").reach] == ["g0"]
     assert [r.entitlement_id for r in explain(ps, "a", on_behalf_of="group:g").reach] == ["g0"]
+
+
+def test_on_behalf_of_group_counts_other_group_entries(tmp_path):
+    # case C: a staff member may also be in admins; the engine would allow
+    agents = {"bot": ([], [("group:admins", ["x.y"])])}
+    ps = _ps(tmp_path, agents, [("'group:admins'", "x.y"), ("bot", "x.y")])
+    assert [r.entitlement_id for r in explain(ps, "bot", on_behalf_of="group:staff").reach] == ["g1"]
+
+
+def test_on_behalf_of_group_counts_role_entries(tmp_path):
+    # case D: a staff member may hold role:reader; the grant is to '*'
+    agents = {"bot": ([], [("role:reader", ["x.y"])])}
+    ps = _ps(tmp_path, agents, [("'*'", "x.y")])
+    assert [r.entitlement_id for r in explain(ps, "bot", on_behalf_of="group:staff").reach] == ["g0"]

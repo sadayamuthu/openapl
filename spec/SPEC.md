@@ -813,7 +813,8 @@ NEVER under-report what the engine could allow. Concretely:
   know a human's group or role memberships, so:
   - an `acts_for` entry could apply if its `who` is the selector itself;
     for a `user:` selector, also any `group:` or `role:` entry; for a
-    `group:` or `role:` selector, also any `user:` entry;
+    `group:` or `role:` selector, any `user:`, `group:` or `role:` entry
+    (a member may hold other groups and roles too);
   - an action could be granted to the human if any grant whose
     `grant_to` contains `*` or any `user:`, `group:` or `role:` selector
     carries it.

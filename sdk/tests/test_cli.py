@@ -121,7 +121,8 @@ def test_cli_explain_on_behalf_of_json(refund_dir):
     r = CliRunner().invoke(main, ["explain", str(refund_dir), "support-agent", "--json",
                                   "--on-behalf-of", "group:marketing"])
     assert r.exit_code == 0
-    assert json.loads(r.output)["reach"] == []
+    # a marketing member may also be in support-staff (R11: never under-report)
+    assert [x["entitlement_id"] for x in json.loads(r.output)["reach"]] == ["refund-small-orders"]
 
 
 def test_cli_inventory_json(refund_dir):

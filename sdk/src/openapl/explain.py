@@ -46,7 +46,8 @@ def _acts_for_may_apply(who: str | None, on_behalf_of: str) -> bool:
     if on_behalf_of.startswith("user:"):
         return who.startswith(_GROUPISH)  # the user may hold any group or role
     if on_behalf_of.startswith(_GROUPISH):
-        return who.startswith("user:")  # any user may hold that group or role
+        # any user may hold that group or role, and also any other group or role
+        return who.startswith(_HUMAN_PREFIXES)
     return False
 
 
