@@ -12,7 +12,7 @@ from openapl.model import Edge, Entitlement, PolicyLoadError, PolicySet, Princip
 
 _FRAMEWORKS = {"NIST-800-53", "SOC2"}
 _VALID_PLACEHOLDER = re.compile(r"\$\{request\.[A-Za-z0-9_.-]+\}")
-_HUMAN_SELECTOR = re.compile(r"(user|group|role):.+", re.DOTALL)
+_HUMAN_SELECTOR = re.compile(r"(user|group|role):\S(?:.*\S)?", re.DOTALL)  # no padding
 
 
 def _edges(items, key: str) -> tuple[Edge, ...]:

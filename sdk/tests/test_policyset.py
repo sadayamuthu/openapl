@@ -121,7 +121,7 @@ def test_valid_placeholders_load(tmp_path):
 
 
 @pytest.mark.parametrize("key", ["entitlements", "deny"])
-@pytest.mark.parametrize("selector", ["agent:bot", "bott", "'group:'", "'user:'", "'role:'", "''"])
+@pytest.mark.parametrize("selector", ["agent:bot", "bott", "'group:'", "'user:'", "'role:'", "''", "'group:x '", "' group:x'"])
 def test_unknown_selector_is_load_error(tmp_path, key, selector):
     write(tmp_path, "a.apl.yaml", doc("a", AGENT + _rule(key, "r1", f"[a1, {selector}]")))
     with pytest.raises(PolicyLoadError, match=r"a\.apl\.yaml.*'r1'.*selector"):
