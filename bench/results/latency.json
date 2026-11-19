@@ -1,0 +1,144 @@
+{
+  "command": "python bench/latency.py --out bench/results/latency.json",
+  "env": {
+    "cpu_model": "Apple M3 Max",
+    "cores": 14,
+    "ram_bytes": 38654705664,
+    "os": "Darwin 27.0.0 (macOS-27.0.1-arm64-arm-64bit)",
+    "python": "3.11.0",
+    "sdk_git_sha": "90a315696852293beef9cf3f62aa0d28712d50a9",
+    "sdk_git_dirty": false
+  },
+  "seed": 1,
+  "points": [
+    {
+      "n": 20000,
+      "warmup": 1000,
+      "p50_us": 276.0,
+      "p95_us": 472.417,
+      "p99_us": 665.834,
+      "max_us": 2414.25,
+      "mean_us": 265.31617389999997,
+      "decision_mix": {
+        "ALLOW": 8810,
+        "DENY": 8170,
+        "REQUIRE_APPROVAL": 3020
+      },
+      "load_ms": 26.252959,
+      "request_pool": 2000,
+      "point": "10x100",
+      "principals": 10,
+      "entitlements": 100,
+      "denies": 5,
+      "seed": 1,
+      "when_entitlements": 27,
+      "namespaces": 2,
+      "request_intents": {
+        "allow": 881,
+        "approval": 302,
+        "deny-blocked": 205,
+        "deny-no-grant": 212,
+        "deny-no-edge": 204,
+        "deny-wrong-group": 196
+      }
+    },
+    {
+      "n": 20000,
+      "warmup": 1000,
+      "p50_us": 1709.417,
+      "p95_us": 2050.5,
+      "p99_us": 2299.25,
+      "max_us": 19274.542,
+      "mean_us": 1747.5667356499998,
+      "decision_mix": {
+        "ALLOW": 9130,
+        "DENY": 7980,
+        "REQUIRE_APPROVAL": 2890
+      },
+      "load_ms": 230.695583,
+      "request_pool": 2000,
+      "point": "100x1000",
+      "principals": 100,
+      "entitlements": 1000,
+      "denies": 50,
+      "seed": 1,
+      "when_entitlements": 325,
+      "namespaces": 20,
+      "request_intents": {
+        "allow": 913,
+        "approval": 289,
+        "deny-blocked": 185,
+        "deny-no-grant": 213,
+        "deny-no-edge": 182,
+        "deny-wrong-group": 218
+      }
+    },
+    {
+      "n": 20000,
+      "warmup": 1000,
+      "p50_us": 4997.75,
+      "p95_us": 5971.25,
+      "p99_us": 6791.333,
+      "max_us": 66737.458,
+      "mean_us": 5136.9183833,
+      "decision_mix": {
+        "ALLOW": 9080,
+        "DENY": 7970,
+        "REQUIRE_APPROVAL": 2950
+      },
+      "load_ms": 731.072,
+      "request_pool": 2000,
+      "point": "300x3000",
+      "principals": 300,
+      "entitlements": 3000,
+      "denies": 150,
+      "seed": 1,
+      "when_entitlements": 984,
+      "namespaces": 20,
+      "request_intents": {
+        "allow": 906,
+        "approval": 297,
+        "deny-blocked": 188,
+        "deny-no-grant": 209,
+        "deny-no-edge": 174,
+        "deny-wrong-group": 226
+      }
+    },
+    {
+      "n": 20000,
+      "warmup": 1000,
+      "p50_us": 16876.0,
+      "p95_us": 21756.625,
+      "p99_us": 23442.417,
+      "max_us": 103419.541,
+      "mean_us": 17532.373375,
+      "decision_mix": {
+        "ALLOW": 8590,
+        "DENY": 8310,
+        "REQUIRE_APPROVAL": 3100
+      },
+      "load_ms": 2499.380333,
+      "request_pool": 2000,
+      "point": "1000x10000",
+      "principals": 1000,
+      "entitlements": 10000,
+      "denies": 500,
+      "seed": 1,
+      "when_entitlements": 3264,
+      "namespaces": 20,
+      "request_intents": {
+        "allow": 859,
+        "approval": 310,
+        "deny-blocked": 183,
+        "deny-no-grant": 215,
+        "deny-no-edge": 222,
+        "deny-wrong-group": 211
+      }
+    }
+  ],
+  "target": {
+    "point": "100x1000",
+    "p99_us": 2299.25,
+    "met": true
+  }
+}
