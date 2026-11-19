@@ -25,3 +25,5 @@ OpenAPL uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Conformance expectations: `decision`, `approvers` and `matched` are
   MUST; reason wording (`reasons`, `reasons_include`) is SHOULD, so an
   engine may word its reasons differently and still conform.
+- Sidecar 0.1 (`sidecar/`, AuthZEN and Envoy ext_authz adapter) added; the
+  specification itself is unchanged.

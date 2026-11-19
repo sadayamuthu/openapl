@@ -92,11 +92,30 @@ REACH IF COMPROMISED
 `explain` is conservative: it may over-report reach, but never
 under-reports what the engine could allow.
 
+## Sidecar
+
+`sidecar/` is a policy decision point that puts the SDK behind Envoy
+`ext_authz` (gRPC, port 9000) and AuthZEN 1.0 (HTTP, port 8081), so a
+gateway such as agentgateway can enforce OpenAPL on MCP tool calls.
+
+```bash
+docker build -f sidecar/Dockerfile -t openapl-sidecar:dev .
+docker run -d -p 127.0.0.1:8081:8081 -e OPENAPL_PDP_TOKEN=secret \
+  -v "$PWD/spec/examples:/policies:ro" openapl-sidecar:dev
+curl -s -H 'Authorization: Bearer secret' -H 'Content-Type: application/json' \
+  -d @sidecar/tests/data/authzen-allow.json \
+  http://127.0.0.1:8081/access/v1/evaluation
+```
+
+Port 9000 must be reachable only by the gateway. See
+[sidecar/README.md](./sidecar/README.md) for configuration and security.
+
 ## Repository
 
 - `spec/`: the specification, JSON Schema, example policy and conformance
   cases.
 - `sdk/`: the `openapl` Python package (engine and CLI).
+- `sidecar/`: the `openapl-sidecar` AuthZEN and ext_authz service.
 
 ## License
 
@@ -110,4 +129,5 @@ spec/examples/ and spec/conformance/) are licensed under Apache-2.0
 
 ```bash
 cd sdk && pytest -q && python ../spec/scripts/validate_examples.py
+cd sidecar && pytest -q
 ```
