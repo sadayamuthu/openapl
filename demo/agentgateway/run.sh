@@ -33,7 +33,7 @@ chmod 0777 out
 "$PY" issuer.py keys out/
 
 # 3. stack
-docker compose up -d --build --wait
+docker compose up -d --build --wait --wait-timeout 180
 
 # 4. scenarios (the runner exits non-zero on any mismatch)
 "$PY" run_scenarios.py --base-url http://127.0.0.1:3000/mcp --out out/ --scenarios scenarios.yaml

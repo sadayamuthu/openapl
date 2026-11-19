@@ -38,6 +38,7 @@ Evidence: `metadata_context.filter_metadata["envoy.filters.http.jwt_authn"]["jwt
  "aud": "agentgateway-demo", "iss": "https://issuer.demo.openapl.local",
  "exp": 1795067952.0, "iat": 1795067352.0, "groups": ["support", "finance"]}
 ```
+The probe used a prefixed `sub` (`oauth_client_id: ...`); the policy matches the bare identity value (e.g. `refund-agent`), and a prefixed `sub` is denied as an unknown principal.
 Three-level `act` intact, outermost = current caller (refund-agent), as minted. Numbers are floats (`iat`, `exp`), as the sidecar README expects.
 Present on every check (initialize, notifications, tools/list, tools/call, GET, batch).
 

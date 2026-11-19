@@ -59,7 +59,7 @@ def test_orphan_deny(az, out):
 def test_crm_export_deny(az, out):
     d = decide(az, out, actors=[SUPPORT], action="crm.export", resource="crm/customers")
     assert d.decision == "DENY"
-    assert "crm.export" in reasons(d)
+    assert "user:alice@acme.com has no grant for crm.export on crm/customers" in reasons(d)
 
 
 def test_void_via_refund_chain_deny(az, out):

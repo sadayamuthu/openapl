@@ -83,11 +83,27 @@ def void_log_note(log_path: Path) -> str:
     return "" if valid else "decision log missing or empty"
 
 
+def no_token_result(sc: dict, c, init: int) -> dict:
+    """No-token scenario: the failed initialize is not enough; also send the scenario's own request
+    (no session, no token). Every response must carry the same status, which check() compares to the expectation."""
+    if init == 200:
+        return {"status": 200, "decision": "", "reasons": [], "note": "initialize succeeded without a token", "detail": ""}
+    if "tool" in sc:
+        status, _, _ = c.call(sc["tool"], expand(sc.get("args", {})))
+    else:
+        status, _, _ = c.request(sc["method"])
+    note = "" if status == init else f"initialize got {init} but {sc.get('tool') or sc['method']} got {status}"
+    return {"status": status, "decision": "", "reasons": [], "note": note,
+            "detail": f"initialize {init}; {sc.get('tool') or sc['method']} {status}"}
+
+
 def run_one(sc: dict, base_url: str, out_dir: str) -> dict:
     """Returns {status, decision, reasons, note, detail}; a non-empty note is a failure."""
     token = issuer.token_from_spec(out_dir, sc["token"]) if sc.get("token") else None
     c = McpClient(base_url, token)
     init = c.initialize()
+    if token is None:
+        return no_token_result(sc, c, init)
     if init != 200:
         return {"status": init, "decision": "", "reasons": [], "note": "", "detail": f"initialize failed ({init})"}
     if "batch" in sc:
@@ -95,8 +111,8 @@ def run_one(sc: dict, base_url: str, out_dir: str) -> dict:
                     "params": {"name": b["tool"], "arguments": expand(b["args"])}}
                    for i, b in enumerate(sc["batch"])]
         status, body = c.post_raw(payload)
-        note = void_log_note(Path(out_dir) / "decisions.jsonl")
-        return {"status": status, "decision": "", "reasons": [], "note": note,
+        void_log = void_log_note(Path(out_dir) / "decisions.jsonl") if sc["expect"].get("never_executed") else None
+        return {"status": status, "decision": "", "reasons": [], "note": "", "void_log": void_log,
                 "detail": body.decode("utf-8", "replace")[:60].replace("\n", " ")}
     if "tool" in sc:
         status, res, hdrs = c.call(sc["tool"], expand(sc.get("args", {})))
@@ -118,6 +134,11 @@ def check(sc: dict, got: dict) -> list[str]:
         errs.append("allowed when it must not be")
     if got.get("note"):
         errs.append(got["note"])
+    if exp.get("never_executed"):
+        if got.get("void_log") is None:
+            errs.append("never_executed set but the decision log was not checked")
+        elif got["void_log"]:
+            errs.append(got["void_log"])
     if "decision" in exp and got["decision"] != exp["decision"]:
         errs.append(f"decision {got['decision']!r} != {exp['decision']!r}")
     for r in exp.get("reasons_include", []):

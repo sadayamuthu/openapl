@@ -70,12 +70,18 @@ scenarios:
     token: { <<: *alice, actors: ["spiffe://acme.com/agents/support-agent"] }
     tool: crm_export_customers
     args: {}
-    expect: { status: 403, decision: DENY }
+    expect:
+      status: 403
+      decision: DENY
+      reasons_include: ["user:alice@acme.com has no grant for crm.export on crm/customers"]
   - id: wrong-group
     token: { email: carol@acme.com, groups: [marketing], actors: *chain-two }
     tool: payments_refund_order
     args: { order_id: "123", amount: 50, account_status: open }
-    expect: { status: 403, decision: DENY }
+    expect:
+      status: 403
+      decision: DENY
+      reasons_include: ["no delegation edge user:carol@acme.com -> support-agent for payments.refund"]
   - id: no-token
     token: null
     method: tools/list
@@ -92,4 +98,4 @@ scenarios:
     batch:
       - { tool: payments_refund_order, args: { order_id: "123", amount: 50, account_status: open } }
       - { tool: payments_void_payment, args: { payment_id: p1 } }
-    expect: { status: [400, 403], never_executed: true }  # never_executed: no ALLOW for payments.void in out/decisions.jsonl
+    expect: { status: [400, 403], never_executed: true }  # never_executed: the runner fails if out/decisions.jsonl holds an ALLOW for payments.void

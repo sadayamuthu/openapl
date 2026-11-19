@@ -54,3 +54,44 @@ def test_empty_scenarios_exit_1(tmp_path, monkeypatch):
     f.write_text("scenarios: []\n")
     monkeypatch.setattr(rs, "wait_for_gateway", lambda *a, **k: True)
     assert rs.main(["--scenarios", str(f), "--out", str(tmp_path)]) == 1
+
+
+class FakeClient:
+    def __init__(self, status):
+        self.status, self.sent = status, []
+
+    def request(self, method, params=None):
+        self.sent.append(method)
+        return self.status, None, {}
+
+    def call(self, name, arguments):
+        self.sent.append(name)
+        return self.status, None, {}
+
+
+NOTOKEN = {"id": "n", "method": "tools/list", "expect": {"status": 401}}
+
+
+def test_no_token_sends_scenario_request():
+    c = FakeClient(401)
+    got = rs.no_token_result(NOTOKEN, c, 401)
+    assert c.sent == ["tools/list"] and got["status"] == 401 and rs.check(NOTOKEN, got) == []
+
+
+def test_no_token_list_succeeding_fails():
+    got = rs.no_token_result(NOTOKEN, FakeClient(200), 401)
+    assert rs.check(NOTOKEN, got)
+
+
+def test_no_token_initialize_200_fails():
+    assert rs.check(NOTOKEN, rs.no_token_result(NOTOKEN, FakeClient(401), 200))
+
+
+def test_never_executed_drives_log_check():
+    sc = {"id": "b", "expect": {"status": [400, 403], "never_executed": True}}
+    base = {"status": 403, "decision": "", "reasons": [], "note": ""}
+    assert rs.check(sc, {**base, "void_log": ""}) == []
+    assert rs.check(sc, {**base, "void_log": "decision log holds an ALLOW for payments.void"})
+    assert rs.check(sc, base)  # not checked -> failure
+    sc2 = {"id": "b", "expect": {"status": [400, 403]}}
+    assert rs.check(sc2, {**base, "void_log": "x"}) == []
