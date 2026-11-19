@@ -62,18 +62,25 @@ def ok_note(sc: dict, res, decision: str) -> str:
     return ""
 
 
-def void_allowed(log_path: Path) -> bool:
-    """True if the decision log holds an ALLOW record for payments.void."""
-    if not log_path.exists():
-        return False
-    for line in log_path.read_text().splitlines():
+def void_log_note(log_path: Path) -> str:
+    """Failure note for the batch check; empty means the log has records and none is an ALLOW on payments.void.
+    Fails closed: a missing, unreadable or record-less log is a failure."""
+    try:
+        lines = log_path.read_text().splitlines()
+    except OSError:
+        return "decision log missing or unreadable"
+    valid = 0
+    for line in lines:
         try:
             rec = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(rec, dict):
+            continue
+        valid += 1
         if rec.get("decision") == "ALLOW" and rec.get("action") == "payments.void":
-            return True
-    return False
+            return "decision log holds an ALLOW for payments.void"
+    return "" if valid else "decision log missing or empty"
 
 
 def run_one(sc: dict, base_url: str, out_dir: str) -> dict:
@@ -88,9 +95,7 @@ def run_one(sc: dict, base_url: str, out_dir: str) -> dict:
                     "params": {"name": b["tool"], "arguments": expand(b["args"])}}
                    for i, b in enumerate(sc["batch"])]
         status, body = c.post_raw(payload)
-        note = ""
-        if void_allowed(Path(out_dir) / "decisions.jsonl"):
-            note = "decision log holds an ALLOW for payments.void"
+        note = void_log_note(Path(out_dir) / "decisions.jsonl")
         return {"status": status, "decision": "", "reasons": [], "note": note,
                 "detail": body.decode("utf-8", "replace")[:60].replace("\n", " ")}
     if "tool" in sc:

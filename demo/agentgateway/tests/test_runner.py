@@ -35,18 +35,22 @@ def test_deny_header_on_200_fails():
     assert _run(CALL, {"content": []}, decision="DENY")
 
 
-def test_void_allowed(tmp_path):
+def test_void_log_fails_closed(tmp_path):
     log = tmp_path / "d.jsonl"
-    log.write_text('{"decision": "DENY", "action": "payments.void"}\n')
-    assert not rs.void_allowed(log)
+    assert rs.void_log_note(log)  # missing
+    log.write_text("")
+    assert rs.void_log_note(log)  # empty
+    log.write_text("not json\n")
+    assert rs.void_log_note(log)  # no valid record
     log.write_text('{"decision": "ALLOW", "action": "payments.void"}\n')
-    assert rs.void_allowed(log)
-    assert not rs.void_allowed(tmp_path / "missing")
+    assert "ALLOW" in rs.void_log_note(log)
+    log.write_text('garbage\n{"decision": "ALLOW", "action": "payments.refund"}\n'
+                   '{"decision": "DENY", "action": "payments.void"}\n')
+    assert rs.void_log_note(log) == ""
 
 
-def test_empty_scenarios_exit_1(tmp_path):
+def test_empty_scenarios_exit_1(tmp_path, monkeypatch):
     f = tmp_path / "s.yaml"
     f.write_text("scenarios: []\n")
-    # gateway wait is skipped by an unreachable URL only after 60s, so patch it
-    rs.wait_for_gateway = lambda *a, **k: True
+    monkeypatch.setattr(rs, "wait_for_gateway", lambda *a, **k: True)
     assert rs.main(["--scenarios", str(f), "--out", str(tmp_path)]) == 1
