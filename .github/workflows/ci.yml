@@ -69,6 +69,26 @@ jobs:
           echo "$out" | grep -q '"decision": true' || { docker logs apl-smoke; exit 1; }
           docker rm -f apl-smoke
 
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install pytest -e sdk -e sidecar
+      - name: Build Cedar image and pull OPA
+        run: sh bench/tools.sh
+      - name: Bench tests
+        run: pytest bench/tests -q
+      - name: OpenAPL, Cedar and Rego runners (any mismatch fails)
+        run: |
+          python bench/run_openapl.py --out "$RUNNER_TEMP/openapl.json"
+          python bench/run_cedar.py --out "$RUNNER_TEMP/cedar.json"
+          python bench/run_rego.py --out "$RUNNER_TEMP/rego.json"
+
   demo:
     runs-on: ubuntu-latest
     timeout-minutes: 20
