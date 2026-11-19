@@ -48,6 +48,11 @@ for evaluating them over a **delegation chain**: the human who started the
 work, every agent the work passed through, and the agent now calling the
 gateway.
 
+Within identity and access management (IAM) for agentic systems, OpenAPL
+is the access policy layer. Identity is established upstream, by OAuth
+clients and RFC 8693 token exchange; OpenAPL decides what each identity in
+the chain may do. It does not authenticate principals or manage accounts.
+
 > **Who can do what, for whom — and the proof of it.**
 
 A conforming engine returns exactly one of `ALLOW`, `DENY` or
