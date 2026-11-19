@@ -1,5 +1,6 @@
 # Run `python issuer.py keys out/` first (creates out/jwks.json), then:
 #   docker compose -f compose.probe.yaml up -d --build
+name: openapl-probe
 services:
   ext-authz:
     build: ./probe

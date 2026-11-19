@@ -62,3 +62,20 @@ def test_approval_hash_matches_sdk():
                                 origin="user:alice@acme.com", caller="refund-agent", exp=2000)
     assert item["attributes_hash"] == attributes_hash(attrs)
     assert item["exp"] == 2000 and item["caller"] == "refund-agent"
+
+
+def test_token_cli_prints_scenario_jwt(out, capsys):
+    scenarios = Path(__file__).resolve().parents[1] / "scenarios.yaml"
+    assert issuer.main(["token", "--scenario", "approved-retry", "--scenarios", str(scenarios),
+                        "--out-dir", out]) == 0
+    c = jwt.decode(capsys.readouterr().out.strip(), options={"verify_signature": False})
+    assert c["email"] == "alice@acme.com" and c["act"]["sub"] == "refund-agent"
+    item = c["openapl_approvals"][0]
+    assert item["origin"] == "user:alice@acme.com" and item["caller"] == "refund-agent"
+    assert item["attributes_hash"] == attributes_hash({"order_id": "123", "amount": 350, "account_status": "open"})
+
+
+def test_token_cli_unknown_and_tokenless(out, capsys):
+    scenarios = str(Path(__file__).resolve().parents[1] / "scenarios.yaml")
+    assert issuer.main(["token", "--scenario", "nope", "--scenarios", scenarios, "--out-dir", out]) == 2
+    assert issuer.main(["token", "--scenario", "no-token", "--scenarios", scenarios, "--out-dir", out]) == 2

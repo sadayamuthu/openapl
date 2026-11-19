@@ -8,6 +8,7 @@ import sys
 import time
 
 import jwt
+import yaml
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
@@ -70,14 +71,45 @@ def mint(out_dir: str, *, email: str, groups: list[str], actors: list[str],
     return jwt.encode(claims, pem, algorithm="RS256", headers={"kid": KID})
 
 
+def token_from_spec(out_dir: str, spec: dict, now: int | None = None) -> str:
+    """Mint a token from a scenarios.yaml `token` block (mint kwargs; `approval` adds one approval_item)."""
+    spec = dict(spec)
+    iat = int(time.time()) if now is None else now
+    approvals = spec.pop("approvals", None)
+    appr = spec.pop("approval", None)
+    if appr is not None:
+        appr = dict(appr)
+        appr.setdefault("exp", iat + 600)
+        approvals = (approvals or []) + [approval_item(**appr)]
+    return mint(out_dir, approvals=approvals, now=iat, **spec)
+
+
+def load_scenarios(path: str) -> list[dict]:
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f)["scenarios"]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="issuer.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
     k = sub.add_parser("keys", help="generate private.pem and jwks.json")
     k.add_argument("out_dir")
+    t = sub.add_parser("token", help="print the JWT for a scenario's token block")
+    t.add_argument("--scenario", required=True)
+    t.add_argument("--scenarios", required=True)
+    t.add_argument("--out-dir", default="out")
     args = ap.parse_args(argv)
     if args.cmd == "keys":
         make_keys(args.out_dir)
+    elif args.cmd == "token":
+        rows = {r["id"]: r for r in load_scenarios(args.scenarios)}
+        if args.scenario not in rows:
+            print(f"issuer.py: unknown scenario {args.scenario!r}", file=sys.stderr)
+            return 2
+        if not rows[args.scenario].get("token"):
+            print(f"issuer.py: scenario {args.scenario!r} has no token", file=sys.stderr)
+            return 2
+        print(token_from_spec(args.out_dir, rows[args.scenario]["token"]))
     return 0
 
 

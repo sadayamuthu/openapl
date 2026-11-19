@@ -1,23 +1,45 @@
 # demo/agentgateway/mcp_client.py
 """Minimal MCP streamable-HTTP client for the demo (JSON or SSE responses)."""
+import http.client
 import json
 import urllib.error
 import urllib.request
 
 
-def _parse(body: bytes, ctype: str):
+def _sse_events(text: str) -> list[str]:
+    """Split an SSE stream into events; join consecutive data: lines of one event."""
+    events: list[str] = []
+    cur: list[str] = []
+    for line in text.splitlines():
+        if not line.strip():
+            if cur:
+                events.append("\n".join(cur))
+                cur = []
+        elif line.startswith("data:"):
+            cur.append(line[5:].lstrip(" "))
+    if cur:
+        events.append("\n".join(cur))
+    return events
+
+
+def _parse(body: bytes, ctype: str, want_id=None):
+    """Parse a JSON or SSE body; for SSE return the message whose id matches want_id."""
     text = body.decode("utf-8", "replace")
     if not text.strip():
         return None
     if "text/event-stream" in ctype:
-        out = None
-        for line in text.splitlines():
-            if line.startswith("data:"):
-                try:
-                    out = json.loads(line[5:].strip())
-                except ValueError:
-                    pass
-        return out
+        msgs = []
+        for ev in _sse_events(text):
+            try:
+                msgs.append(json.loads(ev))
+            except ValueError:
+                pass
+        for m in msgs:
+            if isinstance(m, dict) and want_id is not None and m.get("id") == want_id:
+                return m
+        if want_id is not None:
+            return None
+        return msgs[-1] if msgs else None
     try:
         return json.loads(text)
     except ValueError:
@@ -46,6 +68,9 @@ class McpClient:
                 return r.status, r.read(), {k.lower(): v for k, v in r.headers.items()}
         except urllib.error.HTTPError as e:
             return e.code, e.read(), {k.lower(): v for k, v in e.headers.items()}
+        except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as e:
+            # transport failure: status 0 with a clear error, never an exception
+            return 0, f"transport error: {e}".encode(), {"x-transport-error": "1"}
 
     def post_raw(self, payload: bytes | dict | list) -> tuple[int, bytes]:
         data = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
@@ -53,6 +78,7 @@ class McpClient:
         return status, body
 
     def initialize(self) -> int:
+        """Returns 200 on success; otherwise the failing status (0 = transport error, 599 = protocol error)."""
         self._id += 1
         msg = {"jsonrpc": "2.0", "id": self._id, "method": "initialize", "params": {
             "protocolVersion": "2025-03-26", "capabilities": {},
@@ -61,7 +87,11 @@ class McpClient:
         if status != 200:
             return status
         self.session = hdrs.get("mcp-session-id")
-        self._post(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}).encode())
+        if not self.session:
+            return 599  # 200 without Mcp-Session-Id is an error
+        st, _, _ = self._post(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}).encode())
+        if not 200 <= st < 300:
+            return st or 599
         return status
 
     def request(self, method: str, params: dict | None = None) -> tuple[int, dict | None, dict[str, str]]:
@@ -70,8 +100,10 @@ class McpClient:
         if params is not None:
             msg["params"] = params
         status, body, hdrs = self._post(json.dumps(msg).encode())
-        parsed = _parse(body, hdrs.get("content-type", ""))
+        parsed = _parse(body, hdrs.get("content-type", ""), self._id)
         res = None
+        if status == 0:
+            return 0, {"error": body.decode()}, hdrs
         if isinstance(parsed, dict):
             res = parsed.get("result", parsed.get("error", parsed))
         return status, res, hdrs

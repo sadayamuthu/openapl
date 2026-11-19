@@ -68,3 +68,24 @@ jobs:
           echo "$out"
           echo "$out" | grep -q '"decision": true' || { docker logs apl-smoke; exit 1; }
           docker rm -f apl-smoke
+
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e sdk -e sidecar -r demo/agentgateway/requirements.txt
+      - name: Unit tests
+        run: pytest -q demo/agentgateway/tests
+      - name: Run demo
+        run: ./demo/agentgateway/run.sh
+      - name: Upload evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-out
+          path: demo/agentgateway/out/

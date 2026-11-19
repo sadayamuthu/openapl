@@ -1,0 +1,95 @@
+# Scenario expectations are data. `token` holds issuer.mint kwargs (null = send no token);
+# `approval` adds one approval_item to openapl_approvals. `expect.status` is an int or a list.
+# act.sub values equal the policy identity values (oauth_client_id: refund-agent -> sub "refund-agent").
+# The decision comes from the x-openapl-decision header on 403s.
+x-actors: &chain-two [ "spiffe://acme.com/agents/support-agent", "refund-agent" ]
+x-alice: &alice { email: alice@acme.com, groups: [support-staff] }
+x-refund-350: &refund-350 { order_id: "123", amount: 350, account_status: open }
+scenarios:
+  - id: list-tools
+    token: { <<: *alice, actors: *chain-two }
+    method: tools/list
+    expect: { status: 200 }
+  - id: allow-small-refund
+    token: { <<: *alice, actors: *chain-two }
+    tool: payments_refund_order
+    args: { order_id: "123", amount: 150, account_status: open }
+    expect: { status: 200 }
+  - id: deny-attenuation
+    token: { <<: *alice, actors: *chain-two }
+    tool: payments_void_payment
+    args: { payment_id: p1 }
+    expect:
+      status: 403
+      decision: DENY
+      reasons_include: ["no delegation edge support-agent -> refund-agent for payments.void"]
+  - id: approval-required
+    token: { <<: *alice, actors: *chain-two }
+    tool: payments_refund_order
+    args: *refund-350
+    expect: { status: 403, decision: REQUIRE_APPROVAL }
+  - id: approved-retry
+    token:
+      <<: *alice
+      actors: *chain-two
+      approval: &approval-350
+        entitlement_id: refund-small-orders
+        approver: "role:support-manager"
+        action: payments.refund
+        resource: "order/123"
+        attributes: *refund-350
+        origin: "user:alice@acme.com"
+        caller: refund-agent
+    tool: payments_refund_order
+    args: *refund-350
+    expect: { status: 200 }
+  - id: approval-replay
+    token: { <<: *alice, actors: *chain-two, approval: *approval-350 }
+    tool: payments_refund_order
+    args: { order_id: "123", amount: 360, account_status: open }
+    expect: { status: 403, decision: REQUIRE_APPROVAL }
+  - id: orphan-agent
+    token: { <<: *alice, actors: ["legacy-agent"] }
+    tool: payments_refund_order
+    args: { order_id: "123", amount: 50, account_status: open }
+    expect:
+      status: 403
+      decision: DENY
+      reasons_include: ["owner bob@acme.com of legacy-agent not active"]
+  - id: over-deep-chain
+    token:
+      <<: *alice
+      actors: ["spiffe://acme.com/agents/support-agent", "triage-agent", "refund-agent"]
+    tool: payments_refund_order
+    args: { order_id: "123", amount: 50, account_status: open }
+    expect:
+      status: 403
+      decision: DENY
+      reasons_include: ["chain depth 3 exceeds 2"]
+  - id: prompt-injected-export
+    token: { <<: *alice, actors: ["spiffe://acme.com/agents/support-agent"] }
+    tool: crm_export_customers
+    args: {}
+    expect: { status: 403, decision: DENY }
+  - id: wrong-group
+    token: { email: carol@acme.com, groups: [marketing], actors: *chain-two }
+    tool: payments_refund_order
+    args: { order_id: "123", amount: 50, account_status: open }
+    expect: { status: 403, decision: DENY }
+  - id: no-token
+    token: null
+    method: tools/list
+    expect: { status: 401 }
+  - id: oversize-args
+    token: { <<: *alice, actors: *chain-two }
+    tool: payments_refund_order
+    args: { order_id: "123", amount: 50, account_status: { repeat: ["a", 70000] } }
+    expect: { status: [413, 403] }
+  - id: batch
+    # VERIFIED.md section 4: the gateway answers 400 to a JSON-RPC array after ext_authz saw it. With the real
+    # sidecar, ext_authz runs first and fails closed on the array (403), so either non-2xx is correct; 200 never is.
+    token: { <<: *alice, actors: *chain-two }
+    batch:
+      - { tool: payments_refund_order, args: { order_id: "123", amount: 50, account_status: open } }
+      - { tool: payments_void_payment, args: { payment_id: p1 } }
+    expect: { status: [400, 403], never_executed: true }
