@@ -6,8 +6,11 @@
 blog (entries G1–G16 in [`sources.md`](sources.md)), fetched on 2026-11-19. Nothing was run: no
 Gravitee software was installed, and no GAPL policy was evaluated. Every claim below cites the
 documentation page that supports it. Where the documentation does not support a claim, the grade
-would be `unknown (not documented)`. No scenario needed that grade, because each one turned on
-features the GAPL reference describes, either present or explicitly absent. Third-party pages
+would be `unknown (not documented)`. No scenario needed that grade. Each one turned either
+on a feature the GAPL reference documents, or on the absence of an operator, function or method.
+Those absences are inferred from the operators page [G5], which presents itself as listing
+"Every GAPL operator, method, and expression form", and from the extension-function list [G6].
+Only "GAPL has no division" is stated explicitly [G5]. Third-party pages
 that describe GAPL (the `gravitee.io/corpus/...` pages and others) were not used. See
 `sources.md`.
 
@@ -77,7 +80,7 @@ configure with EL mappings [G10]:
 - `context.origin` is a record with `id`, `groups` and `roles` (arrays become Sets [G7]).
 - `context.agents` is the Set of agent-link ids, the same information as the gateway's own
   `agent_chain` Set [G10].
-- `resource` has a `path` attribute.
+- `resource` has a `path` attribute, set through the PEP's resource properties [G10].
 - `context.attributes` holds the tool arguments as a record.
 - `context.purpose`, `context.task_id`, `context.iat` and `context.now` are Long or String.
 - `context.active_owners` holds the directory snapshot.
@@ -224,7 +227,8 @@ rule system with its own tool glob and argument conditions, not a GAPL decision.
 - **What must be precomputed.**
   - G5 lists no string concatenation, so `order/${request.order_id}` must arrive precomputed.
   - `direct-chain-has-no-edge` against `relay-supplies-the-edge` needs `first_agent` and `hops`.
-  - `otherwise: require_approval` uses the `@id` convention [G3].
+  - `otherwise: require_approval` uses the `@id` convention [G3]. Encoded in full, its approved
+    path also needs the precomputed `attributes_hash` and `expired` flags, as in `approval-bound`.
 - **Grade.** Workaround.
 
 ### threshold-approval — workaround
@@ -238,6 +242,9 @@ rule system with its own tool glob and argument conditions, not a GAPL decision.
     the engine [G3].
   - Gravitee's Human-in-the-Loop rules [G12] could hold such a call at the gateway, but they are a
     separate mechanism, not a GAPL decision.
+- **The approved path.** Encoded in full, as in the Cedar translation, `payment-small`'s approved
+  path needs the precomputed `attributes_hash` and each item's `expired` flag (see
+  `approval-bound`) [G5, G6].
 - **Grade.** Workaround.
 
 ### unknown-principal — workaround

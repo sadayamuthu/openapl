@@ -187,7 +187,7 @@ subject) is also O [X1 §10.2.8].
 - **Policy.**
   - `agent-run-for-task`:
     - `string-bag-size(task_id) = 1`, with an absent `task_id` giving an empty bag [X1 §7.3.5];
-    - `purpose = "quarterly-report"`.
+    - `string-is-in("quarterly-report", purpose)`, which is safe on the bag (M) [X1 A.3.10].
   - `agent-export-15m`:
     - `integer-bag-size(iat) = 1`;
     - `integer-less-than-or-equal(iat, now)`;
@@ -267,20 +267,27 @@ subject) is also O [X1 §10.2.8].
 - **What the PEP must compute.** `first-agent` and `hops`. `direct-chain-has-no-edge`
   (`[alice, refund-agent]`, DENY) and `relay-supplies-the-edge` (ALLOW) differ only in which agent
   follows the origin.
-- **Grade.** Workaround: the order is flattened outside the PDP. Interpolation, denies and the
-  approval outcome are native.
+- **Grade.** Workaround: the order is flattened outside the PDP. Encoded in full, the approved
+  path of `otherwise` also needs the PEP-computed `attributes_hash`, as in `approval-bound`.
+  Interpolation, denies and the approval outcome are native.
 
-### threshold-approval — native
+### threshold-approval — workaround
 
 - **Policy.**
   - Grant rule: origin `finance`, the edge, and the guarded `integer-less-than-or-equal(amount, 200)`.
   - Approval rule (Deny with `require-approval`, approver `role:finance-lead`): the same conjuncts
     with `integer-greater-than(amount, 200)`.
+  - Approved path: `payment-small`'s `otherwise` also admits a request that presents a matching
+    approval item (SPEC.md §7.2, `GRANTED`). The Cedar translation encodes it as well. Encoded in full, it
+    is the same as in `approval-bound`.
 - **Missing amount.** When `amount` is absent, both guards are False. The default rule gives a
   plain Deny without the obligation, which is the suite's DENY.
-- **Grade.** Native under this analysis's reading of obligations (see *The third decision*). No
-  case presents an approval, so no hash is needed here. The approval-consuming path is graded in
-  `approval-bound`.
+- **What the PEP must compute.** For the approved path, the SHA-256 `attributes_hash` of the
+  canonical arguments (XACML has no hash function [X1 §10.2.8]), and the approval list split into
+  one category per item [X1 §5.42, §7.3.2].
+- **Grade.** Workaround, under the full-encoding rule used for every scenario. The threshold, the
+  missing-amount DENY and the REQUIRE_APPROVAL outcome (Deny plus obligation, see *The third
+  decision*) are native. No case in this scenario presents an approval.
 
 ### unknown-principal — workaround
 
@@ -297,16 +304,17 @@ subject) is also O [X1 §10.2.8].
 
 | Grade | Count | Scenarios |
 |---|---|---|
-| native | 8 | confused-deputy, expired-task-grant, forged-purpose, glob-resource, group-and-role, orphaned-agent, prompt-injected-escalation, threshold-approval |
-| workaround | 6 | approval-bound, attenuation-3hop, deny-overrides, over-deep-delegation, relay-adds-edge, unknown-principal |
+| native | 7 | confused-deputy, expired-task-grant, forged-purpose, glob-resource, group-and-role, orphaned-agent, prompt-injected-escalation |
+| workaround | 7 | approval-bound, attenuation-3hop, deny-overrides, over-deep-delegation, relay-adds-edge, threshold-approval, unknown-principal |
 | not-expressible | 0 | — |
 
 ## Concerns
 
-- **The threshold-approval grade rests on treating a standard obligation as the third decision.**
-  If the paper holds that only an engine's *decision value* counts, XACML threshold-approval
-  becomes workaround (7 native / 7 workaround). The case for native: obligations are part of the
-  PDP's normative output and the PEP must understand them [X1 §7.2, §7.18]. Cedar has no such
-  element.
+- **The third decision is native in XACML, but no scenario turns on it alone.** This analysis
+  treats Deny plus a standard obligation as a native REQUIRE_APPROVAL, because obligations are
+  part of the PDP's normative output and the PEP must understand them [X1 §7.2, §7.18]. Cedar has
+  no such element. Every scenario with `otherwise: require_approval` (approval-bound,
+  relay-adds-edge, threshold-approval) is still workaround. Its approved path needs a PEP-computed
+  hash, and relay-adds-edge also needs the chain order.
 - **Not run.** No PDP was executed. Each sketch uses only M features, but a reader should treat
   the grades as an analysis of the specification, not a measurement.
