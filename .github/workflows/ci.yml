@@ -78,7 +78,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install
-        run: pip install -e sdk -e sidecar -r demo/agentgateway/requirements.txt
+        run: pip install pytest -e sdk -e sidecar -r demo/agentgateway/requirements.txt
       - name: Unit tests
         run: pytest -q demo/agentgateway/tests
       - name: Run demo
