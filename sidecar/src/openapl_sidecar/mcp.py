@@ -18,6 +18,8 @@ def tool_calls(body: bytes, passthrough: frozenset[str]) -> tuple[McpCall, ...]:
         doc = json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, ValueError) as e:
         raise McpParseError(f"body is not valid UTF-8 JSON: {e}") from None
+    except RecursionError:
+        raise McpParseError("body is nested too deeply") from None
     if isinstance(doc, dict):
         messages = [doc]
     elif isinstance(doc, list) and doc:

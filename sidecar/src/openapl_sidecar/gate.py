@@ -37,7 +37,7 @@ class Gate:
     def decide(self, claims: dict | None, action: str, resource: str, attributes: dict,
                dev_chain: list[str] | None = None) -> Decision:
         ps = self.authorizer.ps
-        c = claims or {}
+        c = claims if isinstance(claims, dict) else {}
         req = request_from_claims(c, ps, action, resource, attributes, self.clock())
         if self.dev_mode and dev_chain is not None:
             try:
@@ -51,13 +51,20 @@ class Gate:
         if self.log is not None:
             try:
                 self.log.append(d)
-            except OSError:
+            except Exception:
                 d = dataclasses.replace(d, decision="DENY", approvers=(),
                                         reasons=d.reasons + ("decision log write failed",))
         return d
 
     def check_mcp(self, http_method: str, body: bytes, claims: dict | None,
                   dev_chain: list[str] | None = None) -> GateResult:
+        try:
+            return self._check_mcp(http_method, body, claims, dev_chain)
+        except Exception:
+            return _deny("internal error")
+
+    def _check_mcp(self, http_method: str, body: bytes, claims: dict | None,
+                   dev_chain: list[str] | None) -> GateResult:
         if http_method in ("GET", "DELETE"):
             return GateResult("ALLOW", (), (), ())
         if http_method != "POST":

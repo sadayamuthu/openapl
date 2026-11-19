@@ -47,18 +47,51 @@ def test_no_claims_denies(gate):
     assert gate.check_mcp("POST", call(**OPEN), None).decision == "DENY"
 
 
+DEV_CHAIN = ["user:alice@acme.com", "support-agent", "refund-agent"]
+
+
+def actless(alice_claims):
+    # The act chain names an unknown agent, so only the dev chain can yield ALLOW.
+    return {**alice_claims, "act": {"sub": "unknown-agent"}}
+
+
 def test_dev_chain_ignored_outside_dev_mode(gate, alice_claims):
-    r = gate.check_mcp("POST", call(**OPEN), None, dev_chain=["user:alice@acme.com"])
+    r = gate.check_mcp("POST", call(**OPEN), actless(alice_claims), dev_chain=DEV_CHAIN)
     assert r.decision == "DENY"
 
 
 def test_dev_chain_used_in_dev_mode(dev_gate, alice_claims, tmp_path):
-    claims = {k: v for k, v in alice_claims.items() if k != "act"}
-    r = dev_gate.check_mcp("POST", call(**OPEN), claims,
-                           dev_chain=["user:alice@acme.com", "agent:refund-agent"])
-    assert len(r.decision_ids) == 1
+    r = dev_gate.check_mcp("POST", call(**OPEN), actless(alice_claims), dev_chain=DEV_CHAIN)
+    assert r.decision == "ALLOW" and len(r.decision_ids) == 1
     recs, _ = read_log(str(tmp_path / "dev.jsonl"))
     assert recs[0]["dev_mode"] is True
+
+
+def test_dev_mode_non_dict_claims_does_not_raise(dev_gate):
+    r = dev_gate.check_mcp("POST", call(**OPEN), "oops", dev_chain=DEV_CHAIN)
+    assert r.decision == "DENY"
+
+
+def test_deeply_nested_body_denies(gate, alice_claims):
+    r = gate.check_mcp("POST", b"[" * 100000, alice_claims)
+    assert r.decision == "DENY"
+
+
+def test_authorizer_exception_denies(gate, alice_claims):
+    def boom(req):
+        raise RuntimeError("x")
+    gate.authorizer.decide = boom
+    r = gate.check_mcp("POST", call(**OPEN), alice_claims)
+    assert r.decision == "DENY" and "internal error" in r.reasons
+
+
+def test_log_valueerror_denies(gate, alice_claims):
+    class Bad:
+        def append(self, d):
+            raise ValueError("x")
+    gate.log = Bad()
+    r = gate.check_mcp("POST", call(**OPEN), alice_claims)
+    assert r.decision == "DENY" and "decision log write failed" in r.reasons
 
 
 def test_bad_dev_chain_denies(dev_gate, alice_claims):
