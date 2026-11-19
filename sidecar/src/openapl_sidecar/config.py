@@ -20,6 +20,7 @@ class Settings:
     claims_namespace: str
     claims_field: str | None
     pdp_base_url: str | None
+    directory_snapshot: str | None = None
 
 
 def _port(env: Mapping[str, str], name: str, default: int) -> int:
@@ -66,4 +67,5 @@ def settings_from_env(env: Mapping[str, str]) -> Settings:
         claims_namespace=namespace,
         claims_field=(field or None) if sep else None,
         pdp_base_url=base_url,
+        directory_snapshot=env.get("OPENAPL_DIRECTORY_SNAPSHOT") or None,
     )

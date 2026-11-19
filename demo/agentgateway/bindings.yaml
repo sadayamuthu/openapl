@@ -1,0 +1,17 @@
+version: 1
+targets: [payments, crm]
+prefix_mode: always
+tools:
+  - tool: refund_order
+    target: payments
+    action: payments.refund
+    resource: "order/${args.order_id}"
+    attributes: { order_id: "${args.order_id}", amount: "${args.amount}", account_status: "${args.account_status}" }
+  - tool: void_payment
+    target: payments
+    action: payments.void
+    resource: "payment/${args.payment_id}"
+  - tool: export_customers
+    target: crm
+    action: crm.export
+    resource: "crm/customers"

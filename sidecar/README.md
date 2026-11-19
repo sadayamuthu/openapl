@@ -56,6 +56,7 @@ port that cannot be bound. SIGTERM and SIGINT shut down both listeners and exit 
 | `OPENAPL_EXTAUTHZ_PORT` | `9000` | |
 | `OPENAPL_CLAIMS_METADATA` | `envoy.filters.http.jwt_authn/jwt_payload` | `namespace[/field]` |
 | `OPENAPL_PDP_BASE_URL` | unset: no well-known doc | https base URL |
+| `OPENAPL_DIRECTORY_SNAPSHOT` | unset: no directory | JSON `{"active": [emails]}`; owners not listed make their agents orphans; a bad file exits 2 |
 
 ## Bindings
 
