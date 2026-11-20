@@ -1,0 +1,151 @@
+# sidecar/tests/test_gate.py
+import json
+import logging
+
+from openapl.decision_log import read_log
+
+
+def call(**args):
+    return json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                       "params": {"name": "refund_order", "arguments": args}}).encode()
+
+
+def batch(*calls):
+    return ("[" + ",".join(c.decode() for c in calls) + "]").encode()
+
+
+OPEN = dict(order_id="123", amount=150, account_status="open")
+
+
+def test_allow_small_refund(gate, alice_claims):
+    r = gate.check_mcp("POST", call(**OPEN), alice_claims)
+    assert r.decision == "ALLOW" and len(r.decision_ids) == 1
+
+
+def test_over_limit_requires_approval(gate, alice_claims):
+    r = gate.check_mcp("POST", call(**{**OPEN, "amount": 350}), alice_claims)
+    assert (r.decision, r.approvers) == ("REQUIRE_APPROVAL", ("role:support-manager",))
+
+
+def test_bulk_denied(gate, alice_claims):
+    r = gate.check_mcp("POST", call(**{**OPEN, "order_id": "bulk-1"}), alice_claims)
+    assert r.decision == "DENY"
+
+
+def test_batch_one_deny_denies_all(gate, alice_claims):
+    body = batch(call(**OPEN), call(**{**OPEN, "order_id": "bulk-1", "amount": 10}))
+    r = gate.check_mcp("POST", body, alice_claims)
+    assert r.decision == "DENY" and len(r.decision_ids) == 2
+
+
+def test_batch_approval_union(gate, alice_claims):
+    body = batch(call(**OPEN), call(**{**OPEN, "amount": 350}))
+    r = gate.check_mcp("POST", body, alice_claims)
+    assert r.decision == "REQUIRE_APPROVAL" and r.approvers == ("role:support-manager",)
+
+
+def test_no_claims_denies(gate):
+    assert gate.check_mcp("POST", call(**OPEN), None).decision == "DENY"
+
+
+DEV_CHAIN = ["user:alice@acme.com", "support-agent", "refund-agent"]
+
+
+def actless(alice_claims):
+    # The act chain names an unknown agent, so only the dev chain can yield ALLOW.
+    return {**alice_claims, "act": {"sub": "unknown-agent"}}
+
+
+def test_dev_chain_ignored_outside_dev_mode(gate, alice_claims):
+    r = gate.check_mcp("POST", call(**OPEN), actless(alice_claims), dev_chain=DEV_CHAIN)
+    assert r.decision == "DENY"
+
+
+def test_dev_chain_used_in_dev_mode(dev_gate, alice_claims, tmp_path):
+    r = dev_gate.check_mcp("POST", call(**OPEN), actless(alice_claims), dev_chain=DEV_CHAIN)
+    assert r.decision == "ALLOW" and len(r.decision_ids) == 1
+    recs, _ = read_log(str(tmp_path / "dev.jsonl"))
+    assert recs[0]["dev_mode"] is True
+
+
+def test_dev_mode_non_dict_claims_does_not_raise(dev_gate):
+    r = dev_gate.check_mcp("POST", call(**OPEN), "oops", dev_chain=DEV_CHAIN)
+    assert r.decision == "DENY"
+
+
+def test_deeply_nested_body_denies(gate, alice_claims):
+    r = gate.check_mcp("POST", b"[" * 100000, alice_claims)
+    assert r.decision == "DENY"
+
+
+def test_authorizer_exception_denies(gate, alice_claims):
+    def boom(req):
+        raise RuntimeError("x")
+    gate.authorizer.decide = boom
+    r = gate.check_mcp("POST", call(**OPEN), alice_claims)
+    assert r.decision == "DENY" and "internal error" in r.reasons
+
+
+def test_log_valueerror_denies(gate, alice_claims):
+    class Bad:
+        def append(self, d):
+            raise ValueError("x")
+    gate.log = Bad()
+    r = gate.check_mcp("POST", call(**OPEN), alice_claims)
+    assert r.decision == "DENY" and "decision log write failed" in r.reasons
+
+
+def test_bad_dev_chain_denies(dev_gate, alice_claims):
+    assert dev_gate.check_mcp("POST", call(**OPEN), alice_claims, dev_chain=["nope"]).decision == "DENY"
+
+
+def test_get_and_delete_pass(gate):
+    for m in ("GET", "DELETE"):
+        r = gate.check_mcp(m, b"", None)
+        assert (r.decision, r.reasons, r.approvers, r.decision_ids) == ("ALLOW", (), (), ())
+
+
+def test_put_denied(gate, alice_claims):
+    r = gate.check_mcp("PUT", call(**OPEN), alice_claims)
+    assert r.decision == "DENY" and "http method PUT not allowed" in r.reasons
+
+
+def test_parse_error_denies(gate, alice_claims):
+    r = gate.check_mcp("POST", b"{", alice_claims)
+    assert r.decision == "DENY" and r.decision_ids == ()
+
+
+def test_empty_batch_denies(gate, alice_claims):
+    assert gate.check_mcp("POST", b"[]", alice_claims).decision == "DENY"
+
+
+def test_passthrough_only_allows(gate, alice_claims):
+    body = b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+    assert gate.check_mcp("POST", body, alice_claims).decision == "ALLOW"
+
+
+def test_unbound_placeholder_denies(gate, alice_claims):
+    r = gate.check_mcp("POST", call(order_id="123", amount=150), alice_claims)
+    assert r.decision == "DENY" and r.decision_ids == ()
+
+
+def test_every_decision_logged(gate_with_log, alice_claims, tmp_path):
+    gate_with_log.check_mcp("POST", batch(call(**OPEN), call(**OPEN)), alice_claims)
+    recs, bad = read_log(str(tmp_path / "log.jsonl"))
+    assert len(recs) == 2 and bad == 0
+
+
+def test_log_failure_denies(gate_factory, alice_claims, tmp_path):
+    d = tmp_path / "adir"
+    d.mkdir()
+    r = gate_factory(d).check_mcp("POST", call(**OPEN), alice_claims)
+    assert r.decision == "DENY" and "decision log write failed" in r.reasons
+
+
+def test_internal_error_is_logged(gate, alice_claims, caplog):
+    def boom(req):
+        raise RuntimeError("x")
+    gate.authorizer.decide = boom
+    with caplog.at_level(logging.ERROR, logger="openapl_sidecar"):
+        gate.check_mcp("POST", call(**OPEN), alice_claims)
+    assert any(r.name == "openapl_sidecar" and r.exc_info for r in caplog.records)

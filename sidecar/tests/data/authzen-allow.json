@@ -1,0 +1,19 @@
+{
+  "subject": {"type": "user", "id": "alice@acme.com"},
+  "action": {"name": "payments.refund"},
+  "resource": {
+    "type": "order",
+    "id": "123",
+    "properties": {"order_id": "123", "amount": 150, "account_status": "open"}
+  },
+  "context": {
+    "claims": {
+      "email": "alice@acme.com",
+      "groups": ["support-staff"],
+      "openapl_purpose": "customer-refund",
+      "openapl_task_id": "t1",
+      "iat": 900,
+      "act": {"sub": "refund-agent", "act": {"sub": "spiffe://acme.com/agents/support-agent"}}
+    }
+  }
+}
