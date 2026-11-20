@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use OpenAPL, please cite it as below."
+type: software
+title: "OpenAPL: Access Policy Language for humans and AI agents"
+version: 0.1.0
+date-released: 2026-11-19
+authors:
+  - family-names: Sadayamuthu
+    given-names: Karthikeyan
+    orcid: "https://orcid.org/0009-0008-3539-6048"
+repository-code: "https://github.com/sadayamuthu/openapl"
+license: Apache-2.0
+keywords:
+  - access control
+  - authorization
+  - policy language
+  - AI agents
+  - agent IAM
+  - delegation
+  - AuthZEN
+# After the Zenodo deposit is published, add:
+# doi: 10.5281/zenodo.NNNNNNN
