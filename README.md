@@ -277,3 +277,15 @@ how to change the conformance suites. Report security issues privately; see
 Code, schemas, examples and conformance data: [Apache License 2.0](LICENSE).
 The specification text ([SPEC.md](spec/SPEC.md) and
 [CHANGELOG.md](spec/CHANGELOG.md)): [CC BY 4.0](spec/LICENSE-SPEC).
+
+---
+
+<div align="center">
+
+<strong>OpenAPL is a deterministic access policy language for humans and AI agents</strong>
+
+OpenAPL is an [OpenAstra](https://openastra.org) initiative
+
+[GitHub](https://github.com/sadayamuthu/openapl) · [Specification](spec/SPEC.md)
+
+</div>
