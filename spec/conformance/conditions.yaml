@@ -1,0 +1,95 @@
+# spec/conformance/conditions.yaml
+# CEL condition semantics: ordered short-circuit and error absorption.
+openapl_conformance: '0.1'
+suite: conditions
+policies:
+  - inline: |
+      openapl: '0.1'
+      policy: p
+      version: 1.0.0
+      principals:
+        bot:
+          kind: agent
+          identity: { oauth_client_id: bot }
+          owner: priya@acme.com
+          acts_for:
+            - who: "user:h@acme.com"
+              actions: ["a.*"]
+      entitlements:
+        - id: origin-acts
+          grant_to: ["user:h@acme.com"]
+          action: "a.*"
+          resource: "doc/*"
+        - id: false-then-error
+          grant_to: [bot]
+          action: a.write
+          resource: "doc/*"
+          when: ["request.flag == true", "request.missing == 1"]
+          otherwise: require_approval(role:editor)
+        - id: error-then-false
+          grant_to: [bot]
+          action: a.delete
+          resource: "doc/*"
+          when: ["request.missing == 1", "request.flag == true"]
+          otherwise: require_approval(role:editor)
+        - id: absorbed-error
+          grant_to: [bot]
+          action: a.read
+          resource: "doc/*"
+          when: ["request.missing || true"]
+        - id: absorbed-error-and
+          grant_to: [bot]
+          action: a.update
+          resource: "doc/*"
+          when: ["request.missing && false"]
+          otherwise: require_approval(role:editor)
+        - id: principal-view
+          grant_to: [bot]
+          action: a.list
+          resource: "doc/*"
+          when: ["principal.id == 'bot' && chain.caller.id == 'bot' && chain.origin.kind == 'human'"]
+        - id: no-chain-depth
+          grant_to: [bot]
+          action: a.count
+          resource: "doc/*"
+          when: ["chain.depth >= 0"]
+defaults:
+  request:
+    chain:
+      - { id: "user:h@acme.com", kind: human }
+      - { id: bot, kind: agent }
+    resource: doc/1
+    attributes: { flag: false }
+    now: 1000
+cases:
+  - id: false-short-circuits-before-error
+    description: "[false, error] is false, not an error, so the otherwise makes the link eligible for approval."
+    request: { action: a.write }
+    expect:
+      decision: REQUIRE_APPROVAL
+      approvers: ["role:editor"]
+  - id: error-first-is-error
+    description: "[error, false] is an error: no grant and no approval eligibility."
+    request: { action: a.delete }
+    expect:
+      decision: DENY
+      reasons_include: ["condition error in error-then-false"]
+  - id: missing-or-true-is-true
+    request: { action: a.read }
+    expect: { decision: ALLOW }
+  - id: missing-and-false-is-false
+    description: "missing && false is false, not an error, so the otherwise makes the link eligible for approval."
+    request: { action: a.update }
+    expect:
+      decision: REQUIRE_APPROVAL
+      approvers: ["role:editor"]
+  - id: activation-shape
+    description: principal, chain.origin and chain.caller are visible to conditions.
+    request: { action: a.list }
+    expect: { decision: ALLOW }
+  - id: chain-depth-not-in-activation
+    description: R10. chain.depth is not defined, so the condition errors and the entitlement does not grant.
+    request: { action: a.count }
+    expect:
+      decision: DENY
+      reasons_include: ["condition error in no-chain-depth"]

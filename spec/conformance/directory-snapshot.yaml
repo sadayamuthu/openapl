@@ -1,0 +1,31 @@
+# spec/conformance/directory-snapshot.yaml
+# An agent's owner must appear in the directory snapshot when one is supplied.
+openapl_conformance: '0.1'
+suite: directory-snapshot
+policies:
+  - file: ../examples/refund-delegation.apl.yaml
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+      - { id: support-agent, kind: agent }
+      - { id: refund-agent, kind: agent }
+    action: payments.refund
+    resource: order/123
+    attributes: { order_id: "123", amount: 150, account_status: open }
+    purpose: customer-refund
+    task_id: t1
+    now: 1000
+cases:
+  - id: inactive-owner
+    directory: { active: [] }
+    expect:
+      decision: DENY
+      reasons_include:
+        - "owner priya@acme.com of support-agent not active"
+        - "owner priya@acme.com of refund-agent not active"
+
+  - id: active-owner
+    directory: { active: [priya@acme.com] }
+    expect:
+      decision: ALLOW

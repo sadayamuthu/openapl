@@ -1,0 +1,16 @@
+# spec/conformance/empty-policy-set.yaml
+# A directory with no *.apl.yaml files denies everything.
+openapl_conformance: '0.1'
+suite: empty-policy-set
+policies: []
+cases:
+  - id: no-policies-loaded
+    request:
+      chain:
+        - { id: "user:h@acme.com", kind: human }
+      action: a.read
+      resource: doc/1
+      now: 1000
+    expect:
+      decision: DENY
+      reasons: ["no policies loaded"]

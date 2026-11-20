@@ -1,0 +1,79 @@
+# spec/conformance/delegation-settings.yaml
+# Non-default directory settings: max_depth: 1 and humans.match.groups_claim: teams.
+openapl_conformance: '0.1'
+suite: delegation-settings
+policies:
+  - inline: |
+      openapl: '0.1'
+      policy: p
+      version: 1.0.0
+      principals:
+        front:
+          kind: agent
+          identity: { oauth_client_id: front }
+          owner: priya@acme.com
+          acts_for:
+            - who: group:staff
+              actions: [a.read]
+          may_delegate:
+            - to: back
+              actions: [a.read]
+        back:
+          kind: agent
+          identity: { oauth_client_id: back }
+          owner: priya@acme.com
+      humans:
+        source: idp
+        match: { groups_claim: teams }
+      entitlements:
+        - id: staff-reads
+          grant_to: ["group:staff"]
+          action: a.read
+          resource: "doc/*"
+        - id: agents-read
+          grant_to: [front, back]
+          action: a.read
+          resource: "doc/*"
+      delegation:
+        max_depth: 1
+defaults:
+  request:
+    chain:
+      - { id: "user:h@acme.com", kind: human, claims: { teams: [staff] } }
+      - { id: front, kind: agent }
+    action: a.read
+    resource: doc/1
+    now: 1000
+cases:
+  - id: one-agent-hop-within-max-depth
+    expect:
+      decision: ALLOW
+      reasons: []
+  - id: two-agent-hops-exceed-max-depth-1
+    request:
+      chain:
+        - { id: "user:h@acme.com", kind: human, claims: { teams: [staff] } }
+        - { id: front, kind: agent }
+        - { id: back, kind: agent }
+    expect:
+      decision: DENY
+      reasons: ["chain depth 2 exceeds 1"]
+  - id: group-matches-through-custom-claim
+    description: With groups_claim teams, group:staff matches the teams claim (grant and acts_for edge).
+    request:
+      chain:
+        - { id: "user:h@acme.com", kind: human, claims: { teams: [staff] } }
+    expect:
+      decision: ALLOW
+      matched: [staff-reads]
+  - id: group-does-not-match-through-default-claim
+    description: The groups claim is not consulted when groups_claim is teams.
+    request:
+      chain:
+        - { id: "user:h@acme.com", kind: human, claims: { groups: [staff] } }
+        - { id: front, kind: agent }
+    expect:
+      decision: DENY
+      reasons_include:
+        - "no delegation edge user:h@acme.com -> front for a.read"
+        - "user:h@acme.com has no grant for a.read on doc/1"
