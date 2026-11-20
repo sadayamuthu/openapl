@@ -110,6 +110,15 @@ curl -s -H 'Authorization: Bearer secret' -H 'Content-Type: application/json' \
 Port 9000 must be reachable only by the gateway. See
 [sidecar/README.md](./sidecar/README.md) for configuration and security.
 
+## Demo
+
+`demo/agentgateway/` runs OpenAPL behind agentgateway v1.7.0 as `ext_authz`
+in front of two MCP servers: `./demo/agentgateway/run.sh` plays 13 scenarios
+(attenuation, approvals bound to attributes, orphan agents, depth limit,
+gateway rejections) and prints the decision log, `explain` output and an OSCAL
+evidence summary. See the [demo README](./demo/agentgateway/README.md) and the
+[agentgateway integration guide](./docs/integrations/agentgateway.md).
+
 ## Repository
 
 - `spec/`: the specification, JSON Schema, example policy and conformance

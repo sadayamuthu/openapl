@@ -56,6 +56,7 @@ port that cannot be bound. SIGTERM and SIGINT shut down both listeners and exit 
 | `OPENAPL_EXTAUTHZ_PORT` | `9000` | |
 | `OPENAPL_CLAIMS_METADATA` | `envoy.filters.http.jwt_authn/jwt_payload` | `namespace[/field]` |
 | `OPENAPL_PDP_BASE_URL` | unset: no well-known doc | https base URL |
+| `OPENAPL_DIRECTORY_SNAPSHOT` | unset: no directory | JSON `{"active": [emails]}`; owners not listed make their agents orphans; a bad file exits 2 |
 
 ## Bindings
 
@@ -173,8 +174,15 @@ must see every MCP POST.
   and every dev-mode request is marked as such. Never use it outside local
   development. See the OpenAPL design document for the rationale.
 
-## Not yet verified against a running agentgateway
+## Verified against agentgateway
 
-Per-message ext_authz on MCP streamable HTTP, and JSON-RPC batches. The
-integration demo (plan 2b) checks these, along with the `maxRequestBytes`
-needed for a `tools/call` and that `act` reaches `jwt_payload` intact.
+Checked against agentgateway v1.7.0: per-message ext_authz on MCP streamable
+HTTP, the request body, the `jwt_payload` claims with `act` intact, the
+`maxRequestBytes` limit and the no-token case. See the
+[integration guide](../docs/integrations/agentgateway.md) and
+[`demo/agentgateway/VERIFIED.md`](../demo/agentgateway/VERIFIED.md).
+
+One difference: agentgateway v1.7.0 never forwards a JSON-RPC batch to the
+MCP server. It answers 400 after ext_authz has seen the array. The sidecar
+still decides the array first and denies it (403) if any call in it is
+denied, which the demo's `batch` scenario exercises.

@@ -1,0 +1,39 @@
+# Full demo: agentgateway v1.7.0 -> OpenAPL sidecar (ext_authz) -> two MCP servers.
+# Run ./run.sh (generates out/ keys first). OPENAPL_PDP_TOKEN=demo-token is a demo literal, not a secret.
+name: openapl-demo
+services:
+  ext-authz:
+    build:
+      context: ../..
+      dockerfile: sidecar/Dockerfile
+    environment:
+      OPENAPL_PDP_TOKEN: demo-token
+      OPENAPL_POLICY_DIR: /config/policies
+      OPENAPL_BINDINGS: /config/bindings.yaml
+      OPENAPL_DIRECTORY_SNAPSHOT: /config/directory.json
+      OPENAPL_DECISION_LOG: /out/decisions.jsonl
+    volumes:
+      - ./policies:/config/policies:ro
+      - ./bindings.yaml:/config/bindings.yaml:ro
+      - ./directory.json:/config/directory.json:ro
+      - ./out:/out
+  payments-mcp:
+    build: ./mcp_servers
+    command: ["python", "payments.py"]
+  crm-mcp:
+    build: ./mcp_servers
+    command: ["python", "crm.py"]
+  agentgateway:
+    image: ghcr.io/agentgateway/agentgateway:v1.7.0
+    command: ["-f", "/config/gateway.yaml"]
+    volumes:
+      - ./:/config:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      ext-authz:
+        condition: service_healthy
+      payments-mcp:
+        condition: service_started
+      crm-mcp:
+        condition: service_started

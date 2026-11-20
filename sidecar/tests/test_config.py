@@ -48,3 +48,9 @@ def test_claims_metadata_split():
 def test_bad_values(k, v):
     with pytest.raises(ConfigError):
         settings_from_env({**BASE, k: v})
+
+
+def test_directory_snapshot_env():
+    assert settings_from_env(BASE).directory_snapshot is None
+    s = settings_from_env({**BASE, "OPENAPL_DIRECTORY_SNAPSHOT": "/d.json"})
+    assert s.directory_snapshot == "/d.json"

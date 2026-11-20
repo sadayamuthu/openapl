@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+mcp:
+  port: 3000
+  prefixMode: always
+  policies:
+    jwtAuth:
+      mode: strict
+      issuer: https://issuer.demo.openapl.local
+      audiences: [agentgateway-demo]
+      jwks:
+        file: /config/out/jwks.json
+    extAuthz:
+      host: ext-authz:9000
+      protocol:
+        grpc: {}
+      includeRequestBody:
+        maxRequestBytes: 65536
+        allowPartialMessage: false
+  targets:
+  - name: payments
+    mcp:
+      host: http://payments-mcp:3001/mcp
+  - name: crm
+    mcp:
+      host: http://crm-mcp:3002/mcp

@@ -110,3 +110,16 @@ def test_exit_2_on_unwritable_decision_log(monkeypatch, refund_dir, tmp_path, ca
         OPENAPL_DECISION_LOG=str(path))
     assert main(["serve"]) == 2
     assert f"cannot write decision log {path}" in capsys.readouterr().err
+
+
+def test_bad_snapshot_exit_2(refund_dir, tmp_path):
+    snap = tmp_path / "dir.json"
+    snap.write_text("{}")
+    e = {k: v for k, v in os.environ.items() if not k.startswith("OPENAPL_")}
+    e.update(OPENAPL_POLICY_DIR=str(refund_dir), OPENAPL_PDP_TOKEN="t",
+             OPENAPL_DIRECTORY_SNAPSHOT=str(snap))
+    r = subprocess.run(
+        [sys.executable, "-c", "import sys; from openapl_sidecar.server import main; sys.exit(main(['serve']))"],
+        env=e, capture_output=True, text=True, timeout=20)
+    assert r.returncode == 2
+    assert "directory snapshot" in r.stderr

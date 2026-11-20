@@ -1,0 +1,80 @@
+openapl: '0.1'
+policy: demo-payments-access
+version: 1.0.0
+description: OpenAPL x agentgateway demo. Refund delegation, an orphaned legacy agent, and an agent-only CRM export entitlement.
+compliance: [NIST-800-53, SOC2]
+
+principals:
+  support-agent:
+    kind: agent
+    identity: { spiffe: "spiffe://acme.com/agents/support-agent" }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:support-staff
+        actions: [payments.refund, payments.void, crm.export]
+    may_delegate:
+      - to: refund-agent
+        actions: [payments.refund]
+      - to: triage-agent
+        actions: [payments.refund]
+  triage-agent:
+    kind: agent
+    identity: { oauth_client_id: "triage-agent" }
+    owner: priya@acme.com
+    may_delegate:
+      - to: refund-agent
+        actions: [payments.refund]
+  refund-agent:
+    kind: agent
+    identity: { oauth_client_id: "refund-agent" }
+    owner: priya@acme.com
+  legacy-agent:
+    kind: agent
+    identity: { oauth_client_id: "legacy-agent" }
+    owner: bob@acme.com
+    acts_for:
+      - who: group:support-staff
+        actions: [payments.refund]
+
+humans:
+  source: idp
+  match: { groups_claim: groups, roles_claim: roles }
+
+entitlements:
+  - id: refund-small-orders
+    grant_to: [refund-agent]
+    action: payments.refund
+    resource: "order/${request.order_id}"
+    when:
+      - "request.amount <= 200"
+      - "'support-staff' in chain.origin.groups"
+    purpose: customer-refund
+    expires: task
+    otherwise: require_approval(role:support-manager)
+  - id: support-staff-refunds
+    grant_to: ["group:support-staff"]
+    action: payments.refund
+    resource: "order/*"
+  - id: legacy-refunds
+    grant_to: [legacy-agent]
+    action: payments.refund
+    resource: "order/*"
+  - id: crm-export
+    grant_to: [support-agent]
+    action: crm.export
+    resource: "crm/*"
+
+deny:
+  - id: no-refunds-on-closed-accounts
+    grant_to: ["*"]
+    action: payments.refund
+    resource: "order/*"
+    when: ["request.account_status == 'closed'"]
+  - id: no-bulk-refunds
+    grant_to: ["*"]
+    action: payments.refund
+    resource: "order/bulk-*"
+
+delegation:
+  max_depth: 2
+  require_human_origin: true

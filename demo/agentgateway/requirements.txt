@@ -1,0 +1,5 @@
+pyjwt[crypto]>=2.8
+pyyaml>=6.0
+mcp>=1.23,<2
+grpcio
+xds-protos

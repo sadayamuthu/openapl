@@ -1,0 +1,22 @@
+# Run `python issuer.py keys out/` first (creates out/jwks.json), then:
+#   docker compose -f compose.probe.yaml up -d --build
+name: openapl-probe
+services:
+  ext-authz:
+    build: ./probe
+    volumes:
+      - ./out:/out
+  payments-mcp:
+    build: ./mcp_servers
+    command: ["python", "payments.py"]
+  crm-mcp:
+    build: ./mcp_servers
+    command: ["python", "crm.py"]
+  agentgateway:
+    image: ghcr.io/agentgateway/agentgateway:v1.7.0
+    command: ["-f", "/config/gateway.yaml"]
+    volumes:
+      - ./:/config:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on: [ext-authz, payments-mcp, crm-mcp]

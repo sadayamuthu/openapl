@@ -24,7 +24,7 @@ def _serve() -> int:
         settings = settings_from_env(os.environ)
         if not os.path.isdir(settings.policy_dir):
             raise ConfigError(f"OPENAPL_POLICY_DIR is not a directory: {settings.policy_dir}")
-        authorizer = Authorizer.from_dir(settings.policy_dir)
+        authorizer = Authorizer.from_dir(settings.policy_dir, settings.directory_snapshot)
         bindings = load_bindings(settings.bindings_path)
         log = DecisionLog(settings.decision_log) if settings.decision_log else None
         if settings.decision_log:
