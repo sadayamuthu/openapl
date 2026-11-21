@@ -1,0 +1,30 @@
+scenario: confused-deputy
+title: Origin lacks the action, the agent holds it
+threat: confused deputy
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [staff, finance] } }
+      - { id: export-agent, kind: agent }
+    action: data.export
+    resource: dataset/q3
+    now: 1000
+cases:
+  - id: finance-user-via-agent
+    expect: ALLOW
+  - id: staff-without-finance-denied
+    description: The agent holds data.export, but bob cannot export, so the agent cannot export for him (P2).
+    request:
+      chain:
+        - { id: "user:bob@acme.com", kind: human, claims: { groups: [staff] } }
+        - { id: export-agent, kind: agent }
+    expect: DENY
+    reasons_include: ["user:bob@acme.com has no grant for data.export on dataset/q3"]
+  - id: finance-without-staff-has-no-edge
+    description: carol may export herself but acts_for does not select her, so the agent cannot act for her.
+    request:
+      chain:
+        - { id: "user:carol@acme.com", kind: human, claims: { groups: [finance] } }
+        - { id: export-agent, kind: agent }
+    expect: DENY
+    reasons_include: ["no delegation edge user:carol@acme.com -> export-agent for data.export"]

@@ -1,0 +1,51 @@
+# Benchmark stack: one OpenAPL sidecar and two agentgateway v1.7.0 instances over the same two MCP backends.
+#   gateway-openapl  127.0.0.1:3100  demo/agentgateway/gateway.yaml (strict jwtAuth + ext_authz to the sidecar)
+#   gateway-baseline 127.0.0.1:3101  bench/gateway/gateway-noauthz.yaml (strict jwtAuth, no ext_authz; benchmark only)
+# Run via bench/gateway_latency.py (it prepares out/ with keys and always tears the stack down).
+# OPENAPL_PDP_TOKEN=bench-token is a benchmark literal, not a secret. Sidecar ports are never published.
+name: openapl-bench
+services:
+  ext-authz:
+    build:
+      context: ../..
+      dockerfile: sidecar/Dockerfile
+    environment:
+      OPENAPL_PDP_TOKEN: bench-token
+      OPENAPL_POLICY_DIR: /config/policies
+      OPENAPL_BINDINGS: /config/bindings.yaml
+      OPENAPL_DIRECTORY_SNAPSHOT: /config/directory.json
+      OPENAPL_DECISION_LOG: /out/decisions.jsonl
+    volumes:
+      - ../../demo/agentgateway/policies:/config/policies:ro
+      - ../../demo/agentgateway/bindings.yaml:/config/bindings.yaml:ro
+      - ../../demo/agentgateway/directory.json:/config/directory.json:ro
+      - ./out:/out
+  payments-mcp:
+    build: ../../demo/agentgateway/mcp_servers
+    command: ["python", "payments.py"]
+  crm-mcp:
+    build: ../../demo/agentgateway/mcp_servers
+    command: ["python", "crm.py"]
+  gateway-openapl:
+    image: ghcr.io/agentgateway/agentgateway:v1.7.0
+    command: ["-f", "/config/gateway.yaml"]
+    volumes:
+      - ../../demo/agentgateway/gateway.yaml:/config/gateway.yaml:ro
+      - ./out:/config/out:ro
+    ports:
+      - "127.0.0.1:3100:3000"
+    depends_on:
+      ext-authz: {condition: service_healthy}
+      payments-mcp: {condition: service_started}
+      crm-mcp: {condition: service_started}
+  gateway-baseline:
+    image: ghcr.io/agentgateway/agentgateway:v1.7.0
+    command: ["-f", "/config/gateway.yaml"]
+    volumes:
+      - ./gateway-noauthz.yaml:/config/gateway.yaml:ro
+      - ./out:/config/out:ro
+    ports:
+      - "127.0.0.1:3101:3000"
+    depends_on:
+      payments-mcp: {condition: service_started}
+      crm-mcp: {condition: service_started}

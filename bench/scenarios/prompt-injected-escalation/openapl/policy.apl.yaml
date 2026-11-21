@@ -1,0 +1,21 @@
+openapl: '0.1'
+policy: helpdesk
+version: 1.0.0
+description: A helpdesk agent delegated read only, whose own grant is over-broad; the human may also delete tickets.
+principals:
+  helpdesk-agent:
+    kind: agent
+    identity: { oauth_client_id: helpdesk-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:support
+        actions: [tickets.read]
+entitlements:
+  - id: support-tickets
+    grant_to: ["group:support"]
+    action: "tickets.*"
+    resource: "ticket/*"
+  - id: helpdesk-agent-tool-binding
+    grant_to: [helpdesk-agent]
+    action: "tickets.*"
+    resource: "ticket/*"

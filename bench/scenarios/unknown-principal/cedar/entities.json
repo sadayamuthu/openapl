@@ -1,0 +1,4 @@
+[
+  {"uid": {"type": "Agent", "id": "known-agent"}, "attrs": {"owner": "priya@acme.com"}, "parents": []},
+  {"uid": {"type": "Agent", "id": "known-relay"}, "attrs": {"owner": "priya@acme.com"}, "parents": []}
+]

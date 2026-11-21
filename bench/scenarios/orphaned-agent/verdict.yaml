@@ -1,0 +1,28 @@
+# bench/scenarios/orphaned-agent/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: >-
+    The caller's owner attribute is checked against context.active_owners (the snapshot);
+    the caller is the chain's only agent (no may_delegate), so this covers every agent link.
+    No precomputed field.
+  lines: ["cedar/policies.cedar:32-40"]
+rego:
+  grade: native
+  why: "Every agent link's owner is looked up and checked against input.directory.active."
+  lines: ["rego/policy.rego:62-77"]
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: native
+  why: >-
+    The directory snapshot is a multi-valued environment attribute from a PIP (X1 §7.3.5); the
+    rule tests string-is-in("priya@acme.com", active-owner). Nothing is derived.
+  sources: ["X1 §7.3.5", "X1 A.3.10"]
+  analysis: "bench/analysis/xacml.md#orphaned-agent"
+gapl:
+  grade: native
+  why: >-
+    context.active_owners.contains(principal.owner), with owner a principal attribute (G10) and
+    the snapshot an array, so a Set (G7).
+  sources: ["G5", "G7", "G10"]
+  analysis: "bench/analysis/gapl.md#orphaned-agent"

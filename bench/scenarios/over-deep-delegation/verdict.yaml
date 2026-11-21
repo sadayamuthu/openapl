@@ -1,0 +1,29 @@
+# bench/scenarios/over-deep-delegation/verdict.yaml
+openapl: native
+cedar:
+  grade: workaround
+  why: >-
+    Cedar sets have no size, so depth = len(chain) - 1 is computed outside Cedar; the edges
+    read the precomputed first_agent and hops.
+  lines: ["cedar/policies.cedar:24-45"]
+rego:
+  grade: native
+  why: "count(chain) - 1 <= 2 in the ALLOW rule."
+  lines: ["rego/policy.rego:59-74"]
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: workaround
+  why: >-
+    Depth is native (string-bag-size of the agent-id bag, M), but the edges
+    agent-a>agent-b>agent-c need PEP-computed first-agent and hops because bags are unordered
+    (X1 §7.3.2).
+  sources: ["X1 §7.3.2", "X1 A.3.10"]
+  analysis: "bench/analysis/xacml.md#over-deep-delegation"
+gapl:
+  grade: workaround
+  why: >-
+    No set size is documented (G5) and Sets drop duplicates (G4), so depth is precomputed, as
+    are first_agent and hops for the edges. Access Management's Maximum Delegation Depth (G13)
+    limits `act` nesting at token exchange, per domain; it is not a GAPL policy.
+  sources: ["G4", "G5", "G13"]
+  analysis: "bench/analysis/gapl.md#over-deep-delegation"

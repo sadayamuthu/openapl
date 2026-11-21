@@ -1,0 +1,32 @@
+scenario: threshold-approval
+title: Amount over the limit needs an approver
+threat: null
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [finance] } }
+      - { id: payments-agent, kind: agent }
+    action: payments.pay
+    resource: payment/p1
+    attributes: { amount: 150, payment_id: p1 }
+    now: 1000
+cases:
+  - id: under-limit
+    expect: ALLOW
+  - id: at-limit
+    description: "The limit is inclusive: amount <= 200."
+    request: { attributes: { amount: 200, payment_id: p1 } }
+    expect: ALLOW
+  - id: just-over-limit
+    request: { attributes: { amount: 201, payment_id: p1 } }
+    expect: REQUIRE_APPROVAL
+    reasons_include: ["payments-agent needs approval for payment-small"]
+  - id: far-over-limit
+    request: { attributes: { amount: 50000, payment_id: p1 } }
+    expect: REQUIRE_APPROVAL
+    reasons_include: ["payments-agent needs approval for payment-small"]
+  - id: amount-missing
+    description: The condition errors, and an erroring when never makes a link eligible for approval (SPEC 6.6).
+    request: { attributes: { payment_id: p1 } }
+    expect: DENY
+    reasons_include: ["condition error in payment-small"]

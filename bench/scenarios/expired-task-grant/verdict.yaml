@@ -1,0 +1,28 @@
+# bench/scenarios/expired-task-grant/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: >-
+    The task grant needs `context has task_id` and the purpose; the 15m grant compares iat
+    and now with Long arithmetic (iat <= now, now - iat <= 900). No precomputed field.
+  lines: ["cedar/policies.cedar:6-20"]
+rego:
+  grade: native
+  why: "Purpose, task id and iat/now checks are plain comparisons on input."
+  lines: ["rego/policy.rego:46-62"]
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: native
+  why: >-
+    task_id presence is string-bag-size on a MustBePresent=false designator (X1 §7.3.5); purpose
+    is string-equal; iat <= now and now - iat <= 900 use integer-subtract and integer comparison
+    (M), each guarded in a left-to-right `and` (X1 A.3.5).
+  sources: ["X1 §7.3.5", "X1 A.3.2", "X1 A.3.5", "X1 A.3.6"]
+  analysis: "bench/analysis/xacml.md#expired-task-grant"
+gapl:
+  grade: native
+  why: >-
+    `context has task_id` (null leaves the key out, G7), purpose equality, and iat <= now && now
+    - iat <= 900 with documented Long subtraction and comparison (G5).
+  sources: ["G5", "G7"]
+  analysis: "bench/analysis/gapl.md#expired-task-grant"

@@ -1,0 +1,23 @@
+scenario: orphaned-agent
+title: The owner has left the directory
+threat: orphaned agent
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [analysts] } }
+      - { id: report-agent, kind: agent }
+    action: report.run
+    resource: report/q3
+    now: 1000
+cases:
+  - id: owner-active
+    request: { directory: { active: [priya@acme.com, alice@acme.com] } }
+    expect: ALLOW
+  - id: owner-absent
+    request: { directory: { active: [alice@acme.com] } }
+    expect: DENY
+    reasons_include: ["owner priya@acme.com of report-agent not active"]
+  - id: empty-directory
+    request: { directory: { active: [] } }
+    expect: DENY
+    reasons_include: ["owner priya@acme.com of report-agent not active"]

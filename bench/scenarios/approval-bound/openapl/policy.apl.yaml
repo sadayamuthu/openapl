@@ -1,0 +1,30 @@
+openapl: '0.1'
+policy: approval-bound
+version: 1.0.0
+description: Two payment agents under the threshold-approval rule, to test approval binding.
+principals:
+  payments-agent:
+    kind: agent
+    identity: { oauth_client_id: payments-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:finance
+        actions: [payments.pay]
+  other-agent:
+    kind: agent
+    identity: { oauth_client_id: other-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:finance
+        actions: [payments.pay]
+entitlements:
+  - id: finance-pay
+    grant_to: ["group:finance"]
+    action: payments.pay
+    resource: "payment/*"
+  - id: payment-small
+    grant_to: [payments-agent, other-agent]
+    action: payments.pay
+    resource: "payment/*"
+    when: ["request.amount <= 200"]
+    otherwise: require_approval(role:finance-lead)

@@ -1,0 +1,44 @@
+openapl: '0.1'
+policy: deny-overrides
+version: 1.0.0
+description: Transfers are granted broadly, then denied on a frozen ledger, a suspended relay and a contractor origin.
+principals:
+  router-agent:
+    kind: agent
+    identity: { oauth_client_id: router-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:treasury
+        actions: [finance.transfer]
+    may_delegate:
+      - to: transfer-agent
+        actions: [finance.transfer]
+  transfer-agent:
+    kind: agent
+    identity: { oauth_client_id: transfer-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:treasury
+        actions: [finance.transfer]
+entitlements:
+  - id: treasury-transfers
+    grant_to: ["group:treasury"]
+    action: finance.transfer
+    resource: "ledger/*"
+  - id: transfer-agent-transfers
+    grant_to: [transfer-agent]
+    action: finance.transfer
+    resource: "ledger/*"
+deny:
+  - id: no-frozen-ledgers
+    grant_to: ["*"]
+    action: finance.transfer
+    resource: "ledger/frozen-*"
+  - id: router-suspended
+    grant_to: [router-agent]
+    action: finance.transfer
+    resource: "ledger/*"
+  - id: no-contractors
+    grant_to: ["group:contractors"]
+    action: finance.transfer
+    resource: "ledger/*"

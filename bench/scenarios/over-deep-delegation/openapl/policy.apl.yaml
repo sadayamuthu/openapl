@@ -1,0 +1,37 @@
+openapl: '0.1'
+policy: deep-chain
+version: 1.0.0
+description: Three agents chained by full edges, with a depth limit of 2.
+principals:
+  agent-a:
+    kind: agent
+    identity: { oauth_client_id: agent-a }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:analysts
+        actions: [report.run]
+    may_delegate:
+      - to: agent-b
+        actions: [report.run]
+  agent-b:
+    kind: agent
+    identity: { oauth_client_id: agent-b }
+    owner: priya@acme.com
+    may_delegate:
+      - to: agent-c
+        actions: [report.run]
+  agent-c:
+    kind: agent
+    identity: { oauth_client_id: agent-c }
+    owner: priya@acme.com
+entitlements:
+  - id: analysts-run
+    grant_to: ["group:analysts"]
+    action: report.run
+    resource: "report/*"
+  - id: agents-run
+    grant_to: [agent-a, agent-b, agent-c]
+    action: report.run
+    resource: "report/*"
+delegation:
+  max_depth: 2

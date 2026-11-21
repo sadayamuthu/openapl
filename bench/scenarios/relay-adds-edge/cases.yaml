@@ -1,0 +1,36 @@
+scenario: relay-adds-edge
+title: The P1 counterexample, a relay supplies the edge the direct chain lacks
+threat: null
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+      - { id: support-agent, kind: agent }
+      - { id: refund-agent, kind: agent }
+    action: payments.refund
+    resource: order/123
+    attributes: { order_id: "123", amount: 150, account_status: open }
+    purpose: customer-refund
+    task_id: t1
+    now: 1000
+cases:
+  - id: direct-chain-has-no-edge
+    description: refund-agent has no acts_for, so [alice, refund-agent] is DENY.
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [support-staff] } }
+        - { id: refund-agent, kind: agent }
+    expect: DENY
+    reasons_include: ["no delegation edge user:alice@acme.com -> refund-agent for payments.refund"]
+  - id: relay-supplies-the-edge
+    description: "[alice, support-agent, refund-agent] is ALLOW: the relay is a permitted path."
+    expect: ALLOW
+  - id: relay-needs-group-membership
+    description: The relay does not help a user outside support-staff. The caller's grade is NEEDS_APPROVAL (its when is false and otherwise exists) but the missing edge and the NONE origin make the decision DENY (SPEC 7.3 step 9.1), not REQUIRE_APPROVAL.
+    request:
+      chain:
+        - { id: "user:dave@acme.com", kind: human, claims: { groups: [] } }
+        - { id: support-agent, kind: agent }
+        - { id: refund-agent, kind: agent }
+    expect: DENY
+    reasons_include: ["no delegation edge user:dave@acme.com -> support-agent for payments.refund"]

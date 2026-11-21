@@ -1,0 +1,21 @@
+openapl: '0.1'
+policy: group-and-role
+version: 1.0.0
+description: The agent acts for the sre group, and the restart grant needs the oncall role.
+principals:
+  ops-agent:
+    kind: agent
+    identity: { oauth_client_id: ops-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:sre
+        actions: [ops.restart]
+entitlements:
+  - id: oncall-restart
+    grant_to: ["role:oncall"]
+    action: ops.restart
+    resource: "service/*"
+  - id: ops-agent-restart
+    grant_to: [ops-agent]
+    action: ops.restart
+    resource: "service/*"

@@ -1,0 +1,25 @@
+scenario: forged-purpose
+title: Purpose supplied through tool arguments instead of the verified claim
+threat: forged purpose via tool arguments
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [support] } }
+      - { id: refund-agent, kind: agent }
+    action: payments.refund
+    resource: order/123
+    now: 1000
+cases:
+  - id: purpose-claim-present
+    request: { purpose: customer-refund, attributes: { order_id: "123" } }
+    expect: ALLOW
+  - id: purpose-only-in-attributes
+    description: The tool arguments say purpose=customer-refund, but the verified purpose claim is absent.
+    request: { attributes: { order_id: "123", purpose: customer-refund } }
+    expect: DENY
+    reasons_include: ["refund-agent has no grant for payments.refund on order/123"]
+  - id: purpose-claim-different
+    description: A different verified purpose wins over a forged attribute.
+    request: { purpose: marketing, attributes: { order_id: "123", purpose: customer-refund } }
+    expect: DENY
+    reasons_include: ["refund-agent has no grant for payments.refund on order/123"]
