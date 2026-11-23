@@ -1,0 +1,31 @@
+# bench/scenarios/deny-overrides/verdict.yaml
+openapl: native
+cedar:
+  grade: workaround
+  why: >-
+    The denies themselves are native: forbid overrides permit, and a deny on an intermediary
+    is context.agents.contains (the set of agent links). But the three-link case's edges read
+    the precomputed first_agent and hops, so under R7 the translation is a workaround.
+  lines: ["cedar/policies.cedar:23-38", "cedar/policies.cedar:42-55"]
+rego:
+  grade: native
+  why: "`some link in chain` deny rules; ALLOW requires `not denied`."
+  lines: ["rego/policy.rego:66-93"]
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: workaround
+  why: >-
+    The denies are native: deny-overrides (M, X1 §10.2.3, C.2) and string-is-in on the agent-id
+    bag for the relay deny. But the three-link case's edges (router-agent acts_for,
+    router-agent>transfer-agent) need PEP-computed first-agent and hops, as in Cedar; no case's
+    decision depends on those edges.
+  sources: ["X1 §10.2.3", "X1 C.2", "X1 §7.3.2"]
+  analysis: "bench/analysis/xacml.md#deny-overrides"
+gapl:
+  grade: workaround
+  why: >-
+    Guarded forbids win over permits (G8) and a relay deny is context.agents.contains (G5), so
+    the denies are native; but the three-link case's edges need precomputed first_agent and hops
+    (unordered Set, G4, G7), as in Cedar.
+  sources: ["G4", "G5", "G7", "G8"]
+  analysis: "bench/analysis/gapl.md#deny-overrides"

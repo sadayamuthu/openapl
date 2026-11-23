@@ -1,0 +1,30 @@
+scenario: glob-resource
+title: Wildcard resource grant with a specific deny
+threat: null
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [staff] } }
+      - { id: wiki-agent, kind: agent }
+    action: docs.read
+    resource: docs/eng/spec
+    now: 1000
+cases:
+  - id: matches-wildcard
+    expect: ALLOW
+  - id: wildcard-crosses-slashes
+    description: "* matches / (SPEC 6.2), so a deeply nested path is granted."
+    request: { resource: docs/eng/design/2026/notes }
+    expect: ALLOW
+  - id: specific-deny-wins
+    request: { resource: docs/hr/salaries-2026 }
+    expect: DENY
+    reasons_include: ["denied by no-salary-pages"]
+  - id: neighbour-of-denied-path
+    description: docs/hr/handbook is under the grant and outside the deny.
+    request: { resource: docs/hr/handbook }
+    expect: ALLOW
+  - id: outside-the-wildcard
+    request: { resource: wiki/eng/spec }
+    expect: DENY
+    reasons_include: ["user:alice@acme.com has no grant for docs.read on wiki/eng/spec"]

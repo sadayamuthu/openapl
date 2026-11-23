@@ -1,0 +1,23 @@
+openapl: '0.1'
+policy: threshold-approval
+version: 1.0.0
+description: A payments agent may pay up to 200 alone and needs a finance lead above that.
+principals:
+  payments-agent:
+    kind: agent
+    identity: { oauth_client_id: payments-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:finance
+        actions: [payments.pay]
+entitlements:
+  - id: finance-pay
+    grant_to: ["group:finance"]
+    action: payments.pay
+    resource: "payment/*"
+  - id: payment-small
+    grant_to: [payments-agent]
+    action: payments.pay
+    resource: "payment/*"
+    when: ["request.amount <= 200"]
+    otherwise: require_approval(role:finance-lead)

@@ -1,0 +1,24 @@
+// bench/scenarios/group-and-role/cedar/schema.cedarschema
+// Shared shape (every scenario): humans are Users whose group/role claims are parents;
+// agents carry their owner; resources carry their path for `like`.
+entity Group, Role;
+entity User in [Group, Role];
+entity Agent { owner: String };
+entity Resource { path: String };
+
+type Approval = {
+  entitlement_id: String, approver: String, action: String, resource: String,
+  attributes_hash: String, origin: User, caller: Agent, expired: Bool,
+};
+type Attributes = {};
+type Context = {
+  origin?: User, origin_agent?: Agent, first_agent?: Agent,
+  agents: Set<Agent>, hops: Set<String>, depth: Long, now: Long,
+  purpose?: String, task_id?: String, iat?: Long,
+  attributes: Attributes, attributes_hash: String, approvals: Set<Approval>,
+  active_owners?: Set<String>,
+};
+
+action "ops.restart" appliesTo {
+  principal: [User, Agent], resource: [Resource], context: Context,
+};

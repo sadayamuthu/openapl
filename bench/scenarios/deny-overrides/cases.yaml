@@ -1,0 +1,35 @@
+scenario: deny-overrides
+title: A matching deny at any link beats the grants
+threat: null
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [treasury] } }
+      - { id: transfer-agent, kind: agent }
+    action: finance.transfer
+    resource: ledger/ops
+    now: 1000
+cases:
+  - id: granted-and-not-denied
+    expect: ALLOW
+  - id: deny-on-resource
+    request: { resource: ledger/frozen-2026 }
+    expect: DENY
+    reasons_include: ["denied by no-frozen-ledgers"]
+  - id: deny-on-intermediary
+    description: router-agent is only a relay and is never graded, but a deny matches every link.
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [treasury] } }
+        - { id: router-agent, kind: agent }
+        - { id: transfer-agent, kind: agent }
+    expect: DENY
+    reasons_include: ["denied by router-suspended"]
+  - id: deny-on-origin-group
+    description: The origin is in treasury (granted) and contractors (denied).
+    request:
+      chain:
+        - { id: "user:erin@acme.com", kind: human, claims: { groups: [treasury, contractors] } }
+        - { id: transfer-agent, kind: agent }
+    expect: DENY
+    reasons_include: ["denied by no-contractors"]

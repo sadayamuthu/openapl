@@ -1,0 +1,21 @@
+openapl: '0.1'
+policy: confused-deputy
+version: 1.0.0
+description: An export agent that every staff member may use, but only finance may export.
+principals:
+  export-agent:
+    kind: agent
+    identity: { oauth_client_id: export-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:staff
+        actions: [data.export]
+entitlements:
+  - id: finance-exports
+    grant_to: ["group:finance"]
+    action: data.export
+    resource: "dataset/*"
+  - id: export-agent-exports
+    grant_to: [export-agent]
+    action: data.export
+    resource: "dataset/*"

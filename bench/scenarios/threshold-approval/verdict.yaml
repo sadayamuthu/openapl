@@ -1,0 +1,40 @@
+# bench/scenarios/threshold-approval/verdict.yaml
+openapl: native
+cedar:
+  grade: workaround
+  why: >-
+    The amount threshold and the absent-amount DENY are native (`has` guards), but Cedar
+    decides only ALLOW/DENY: REQUIRE_APPROVAL is a reason, a permit whose @id starts with
+    `needs-approval:`, mapped by the runner. The approved path reads the precomputed
+    attributes_hash and `expired`.
+  lines: ["cedar/policies.cedar:12-43"]
+rego:
+  grade: native
+  why: >-
+    The when-true / when-false / error split is written with is_number guards, the per-link
+    grade uses else, and data.openapl.decision returns REQUIRE_APPROVAL as a value; Rego
+    decisions are arbitrary documents, so no outside mapping is needed.
+  lines: ["rego/policy.rego:47-96", "rego/policy.rego:111-124"]
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: workaround
+  why: >-
+    Under the full-encoding rule, payment-small's approved path (a matching approval item, SPEC
+    7.2, encoded in the Cedar translation too) needs the SHA-256 attributes_hash computed by the
+    PEP: XACML has no hash function (X1 §10.2.8), and the approval list must be split per
+    category (X1 §5.42). The obligation path alone is native: amount <= 200 is a guarded integer
+    comparison, over the limit a Deny rule carries a require-approval obligation (X1 §5.39,
+    §7.18), and a missing amount gives a plain Deny.
+  sources: ["X1 §5.39", "X1 §5.42", "X1 §7.2", "X1 §7.18", "X1 §10.2.8", "X1 A.3.5"]
+  analysis: "bench/analysis/xacml.md#threshold-approval"
+gapl:
+  grade: workaround
+  why: >-
+    The threshold is a guarded Long comparison and a missing amount matches no permit (G5, G8),
+    but GAPL decides only Permit/Forbid/Not applicable (G8): REQUIRE_APPROVAL is an @id
+    convention mapped outside the engine (G3). Encoded in full, the approved path needs the
+    precomputed attributes_hash (no hash function, G5, G6) and each approval item's `expired`
+    flag (no search by comparison, G5), as in Cedar. Human-in-the-Loop rules (G12) are a
+    separate Agent Management mechanism, not GAPL.
+  sources: ["G3", "G5", "G6", "G8", "G12"]
+  analysis: "bench/analysis/gapl.md#threshold-approval"

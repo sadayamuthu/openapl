@@ -1,0 +1,22 @@
+openapl: '0.1'
+policy: forged-purpose
+version: 1.0.0
+description: A refund grant that applies only under the customer-refund purpose claim.
+principals:
+  refund-agent:
+    kind: agent
+    identity: { oauth_client_id: refund-agent }
+    owner: priya@acme.com
+    acts_for:
+      - who: group:support
+        actions: [payments.refund]
+entitlements:
+  - id: support-refunds
+    grant_to: ["group:support"]
+    action: payments.refund
+    resource: "order/*"
+  - id: refund-agent-refunds
+    grant_to: [refund-agent]
+    action: payments.refund
+    resource: "order/*"
+    purpose: customer-refund

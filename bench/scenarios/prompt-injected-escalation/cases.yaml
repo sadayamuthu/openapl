@@ -1,0 +1,26 @@
+scenario: prompt-injected-escalation
+title: An injected request for a tool outside every edge
+threat: prompt-injected escalation
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [support] } }
+      - { id: helpdesk-agent, kind: agent }
+    action: tickets.read
+    resource: ticket/9
+    now: 1000
+cases:
+  - id: delegated-read
+    expect: ALLOW
+  - id: injected-delete
+    description: Alice and the agent's own over-broad grant both allow tickets.delete; only the missing acts_for action blocks it.
+    request: { action: tickets.delete }
+    expect: DENY
+    reasons_include: ["no delegation edge user:alice@acme.com -> helpdesk-agent for tickets.delete"]
+    reasons_exclude: ["has no grant"]
+  - id: lookalike-action-name
+    description: tickets.read-all is not tickets.read; actions match exactly or by explicit glob.
+    request: { action: tickets.read-all }
+    expect: DENY
+    reasons_include: ["no delegation edge user:alice@acme.com -> helpdesk-agent for tickets.read-all"]
+    reasons_exclude: ["has no grant"]

@@ -1,0 +1,26 @@
+# bench/scenarios/glob-resource/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: >-
+    `like` with `*` matches across `/`; the specific deny is a forbid. No precomputed field.
+  lines: ["cedar/policies.cedar:5-11", "cedar/policies.cedar:36-38"]
+rego:
+  grade: native
+  why: "glob.match with null delimiters lets `*` cross `/`; the deny is a rule."
+  lines: ["rego/policy.rego:25", "rego/policy.rego:39-63"]
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: native
+  why: >-
+    docs/* and docs/hr/salaries* are string-starts-with (M, X1 A.3.9) on resource-id; the salary
+    deny is a Deny rule in the first-applicable deny policy. Nothing is computed.
+  sources: ["X1 A.3.9", "X1 §10.2.8"]
+  analysis: "bench/analysis/xacml.md#glob-resource"
+gapl:
+  grade: native
+  why: >-
+    `like` with `*` matching any sequence of characters (G5) for docs/* and a guarded forbid for
+    docs/hr/salaries*; forbid wins (G8).
+  sources: ["G5", "G8"]
+  analysis: "bench/analysis/gapl.md#glob-resource"

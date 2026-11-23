@@ -1,0 +1,42 @@
+scenario: expired-task-grant
+title: Grants that lapse with the task or after a duration
+threat: expired task grant
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [analysts] } }
+      - { id: report-agent, kind: agent }
+    action: report.run
+    resource: report/q3
+    purpose: quarterly-report
+    task_id: t1
+    now: 10000
+cases:
+  - id: task-grant-with-task-id
+    expect: ALLOW
+  - id: task-grant-without-task-id
+    description: expires task applies only when the request carries a task id.
+    request: { task_id: null }
+    expect: DENY
+    reasons_include: ["report-agent has no grant for report.run on report/q3"]
+  - id: duration-grant-fresh-token
+    description: iat is 600 s before now, inside the 15 m (900 s) window.
+    request: { action: report.export, purpose: null, task_id: null, iat: 9400 }
+    expect: ALLOW
+  - id: duration-grant-at-the-bound
+    description: The bound is inclusive, now - iat = 900.
+    request: { action: report.export, purpose: null, task_id: null, iat: 9100 }
+    expect: ALLOW
+  - id: duration-grant-expired-via-iat
+    description: iat is 901 s before now, one second past the window.
+    request: { action: report.export, purpose: null, task_id: null, iat: 9099 }
+    expect: DENY
+    reasons_include: ["report-agent has no grant for report.export on report/q3"]
+  - id: duration-grant-without-iat
+    request: { action: report.export, purpose: null, task_id: null }
+    expect: DENY
+    reasons_include: ["report-agent has no grant for report.export on report/q3"]
+  - id: duration-grant-token-from-the-future
+    request: { action: report.export, purpose: null, task_id: null, iat: 10001 }
+    expect: DENY
+    reasons_include: ["report-agent has no grant for report.export on report/q3"]

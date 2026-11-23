@@ -1,0 +1,33 @@
+scenario: attenuation-3hop
+title: A middle edge that omits the action blocks it end to end
+threat: confused deputy
+defaults:
+  request:
+    chain:
+      - { id: "user:alice@acme.com", kind: human, claims: { groups: [editors] } }
+      - { id: intake-agent, kind: agent }
+      - { id: summary-agent, kind: agent }
+      - { id: publish-agent, kind: agent }
+    action: doc.read
+    resource: doc/42
+    now: 1000
+cases:
+  - id: read-full-edge-set
+    expect: ALLOW
+  - id: comment-full-edge-set
+    request: { action: doc.comment }
+    expect: ALLOW
+  - id: write-middle-edge-omits-action
+    description: Every endpoint is granted doc.write, but intake-agent -> summary-agent omits it.
+    request: { action: doc.write }
+    expect: DENY
+    reasons_include: ["no delegation edge intake-agent -> summary-agent for doc.write"]
+  - id: read-skipping-middle-hop
+    description: Dropping summary-agent leaves intake-agent -> publish-agent with no edge.
+    request:
+      chain:
+        - { id: "user:alice@acme.com", kind: human, claims: { groups: [editors] } }
+        - { id: intake-agent, kind: agent }
+        - { id: publish-agent, kind: agent }
+    expect: DENY
+    reasons_include: ["no delegation edge intake-agent -> publish-agent for doc.read"]

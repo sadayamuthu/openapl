@@ -1,0 +1,29 @@
+# bench/scenarios/forged-purpose/verdict.yaml
+openapl: native
+cedar:
+  grade: native
+  why: >-
+    context.purpose (the verified claim) is separate from context.attributes (tool
+    arguments). No precomputed field.
+  lines: ["cedar/policies.cedar:6-11"]
+rego:
+  grade: native
+  why: "input.purpose (the verified claim) is separate from input.attributes."
+  lines: ["rego/policy.rego:45-52"]
+# xacml and gapl are written analyses (nothing run); sources: bench/analysis/sources.md
+xacml:
+  grade: native
+  why: >-
+    The verified purpose is an environment attribute and the tool argument is a different
+    attribute in an arguments category; attributes are identified by Category and AttributeId
+    (X1 §5.29). Nothing is computed.
+  sources: ["X1 §5.29"]
+  analysis: "bench/analysis/xacml.md#forged-purpose"
+gapl:
+  grade: native
+  why: >-
+    The grant reads context.purpose; the tool argument is context.attributes.purpose, a
+    different record field (G4). Caveat: action properties replace same-named context keys (G7,
+    G10), so arguments must not be mapped as top-level action properties.
+  sources: ["G4", "G7", "G10"]
+  analysis: "bench/analysis/gapl.md#forged-purpose"
