@@ -1,6 +1,6 @@
 # Build from the repository root:
 #   docker build -f sidecar/Dockerfile -t openapl-sidecar:dev .
-FROM python:3.11.11-slim
+FROM python:3.15.2-slim
 
 WORKDIR /app
 COPY sdk/ /app/sdk/
