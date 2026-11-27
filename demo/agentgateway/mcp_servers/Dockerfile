@@ -1,4 +1,4 @@
-FROM python:3.11.11-slim
+FROM python:3.15.2-slim
 RUN pip install --no-cache-dir "mcp>=1.23,<2"
 WORKDIR /app
 COPY payments.py crm.py ./
